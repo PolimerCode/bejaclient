@@ -9,7 +9,8 @@ export function initAutoUpdater(getWindow: () => BrowserWindow | null, log: LogF
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
-  autoUpdater.logger = null // suppress internal logging; we handle it below
+  autoUpdater.allowPrerelease = false  // client-v* releases are pre-releases; ignore them
+  autoUpdater.logger = null
 
   autoUpdater.on('checking-for-update', () => {
     log('INFO', 'updater: checking for update')

@@ -14,11 +14,6 @@ on:
         description: 'Version number (e.g. 1.2.0)'
         required: true
         type: string
-      prerelease:
-        description: 'Mark as pre-release?'
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   release:
@@ -60,7 +55,7 @@ jobs:
         with:
           tag_name: client-v${{ inputs.version }}
           name: BejaClient ${{ inputs.version }}
-          prerelease: ${{ inputs.prerelease }}
+          prerelease: true
           body: |
             ## BejaClient ${{ inputs.version }}
 
