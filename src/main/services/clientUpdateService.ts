@@ -6,7 +6,7 @@ import { createHash } from 'crypto'
 import { app } from 'electron'
 
 const VERSION_JSON_URL =
-  'https://raw.githubusercontent.com/bejameja/bejaclient/main/client-version.json'
+  'https://raw.githubusercontent.com/bejameja/bejaclient-mc/main/client-version.json'
 
 export interface ClientVersionInfo {
   version: string
