@@ -4,6 +4,7 @@ import HomePage from '../pages/HomePage.vue'
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
+    { path: '/console',   component: () => import('../pages/ConsolePage.vue'),                    name: 'console'   },
     { path: '/',          component: HomePage,                                                    name: 'home'      },
     { path: '/cosmetics', component: HomePage,                                                    name: 'cosmetics' },
     { path: '/profiles',  component: () => import('../pages/settings/ProfilesSettings.vue'),      name: 'profiles'  },

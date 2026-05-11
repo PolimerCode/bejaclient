@@ -1,5 +1,6 @@
 <template>
-  <div class="app-shell">
+  <RouterView v-if="isConsole" />
+  <div v-else class="app-shell">
     <NavBar />
     <main class="main-content" ref="mainRef" @scroll="onScroll">
       <RouterView v-slot="{ Component }">
@@ -13,7 +14,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch, ref } from 'vue'
+import { onMounted, watch, ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import NavBar from './components/layout/NavBar.vue'
 import RightPanel from './components/layout/RightPanel.vue'
 import UpdateNotification from './components/common/UpdateNotification.vue'
@@ -23,6 +25,9 @@ import { useAccountStore } from './store/accountStore'
 import { useLauncherStore } from './store/launcherStore'
 import { useSettingsStore } from './store/settingsStore'
 import { playLaunch, playMouseClick, warmAudio } from './composables/useSounds'
+
+const route = useRoute()
+const isConsole = computed(() => route.path === '/console')
 
 const { updateScroll } = useScrollState()
 const mainRef = ref<HTMLElement | null>(null)
@@ -40,6 +45,7 @@ function applyAccent(color: string) {
 }
 
 onMounted(async () => {
+  if (isConsole.value) return  // console window handles its own setup
   await Promise.all([
     settingsStore.load(),
     accountStore.loadAccounts(),

@@ -169,8 +169,14 @@ declare global {
       launch: {
         start(profileId: string): Promise<void>
         kill(): Promise<boolean>
+        openConsole(): void
         onLog(cb: (line: string) => void): void
         onStatus(cb: (status: string) => void): void
+      }
+      console: {
+        onLog(cb: (line: string) => void): void
+        onStatus(cb: (s: string) => void): void
+        onClear(cb: () => void): void
       }
       profiles: {
         list(): Promise<LaunchProfile[]>

@@ -1,4 +1,4 @@
-import { IpcMain, BrowserWindow, dialog } from 'electron'
+import { IpcMain, BrowserWindow, dialog, ipcMain as _ipcMain } from 'electron'
 import { writeFileSync } from 'fs'
 import { launchGame, killGame, isRunning } from '../services/launchService'
 import {
@@ -10,15 +10,28 @@ import {
 } from '../services/profileService'
 import { getSettings, saveSettings } from '../services/settingsService'
 import { setIdlePresence, setPlayingPresence } from '../services/discordRPC'
+import {
+  openConsoleWindow,
+  sendConsoleLog,
+  sendConsoleStatus,
+  sendConsoleClear,
+} from '../services/consoleWindowService'
 
 export function setupLaunchHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow | null): void {
+  ipcMain.on('launch:open-console', () => openConsoleWindow())
+
   ipcMain.handle('launch:start', async (event, profileId: string) => {
-    event.sender.send('launch:log', '[IPC] launch:start handler invoked')
+    sendConsoleClear()
+    openConsoleWindow()
     await launchGame(
       profileId,
-      line => event.sender.send('launch:log', line),
+      line => {
+        event.sender.send('launch:log', line)
+        sendConsoleLog(line)
+      },
       status => {
         event.sender.send('launch:status', status)
+        sendConsoleStatus(status)
         if (status === 'running') {
           const profile = getProfile(profileId)
           setPlayingPresence(profile?.version)

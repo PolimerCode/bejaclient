@@ -97,9 +97,6 @@
       </div>
     </div>
 
-    <!-- Game log console -->
-    <GameLogs />
-
   </div>
 </template>
 
@@ -107,7 +104,6 @@
 import { computed, ref } from 'vue'
 import bannerVideo from '../assets/play-banner.mp4'
 import { useRouter } from 'vue-router'
-import GameLogs from '../components/home/GameLogs.vue'
 import { useAccountStore } from '../store/accountStore'
 import { useLauncherStore } from '../store/launcherStore'
 

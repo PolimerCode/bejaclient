@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('api', {
   launch: {
     start: (profileId: string) => ipcRenderer.invoke('launch:start', profileId),
     kill: () => ipcRenderer.invoke('launch:kill'),
+    openConsole: () => ipcRenderer.send('launch:open-console'),
     saveLogs: (lines: string[]) => ipcRenderer.invoke('launch:save-logs', lines),
     onLog: (cb: (line: string) => void) => {
       ipcRenderer.on('launch:log', (_e, l) => cb(l))
@@ -119,6 +120,13 @@ contextBridge.exposeInMainWorld('api', {
     getJavaVersions: () => ipcRenderer.invoke('system:java-versions'),
     platform: process.platform,
     openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url),
+  },
+
+  // BejaConsole window
+  console: {
+    onLog:    (cb: (line: string) => void) => ipcRenderer.on('console:log',    (_e, l) => cb(l)),
+    onStatus: (cb: (s: string)    => void) => ipcRenderer.on('console:status', (_e, s) => cb(s)),
+    onClear:  (cb: ()             => void) => ipcRenderer.on('console:clear',  ()      => cb()),
   },
 
   // Auto-updater
