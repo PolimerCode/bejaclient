@@ -5,8 +5,7 @@ import { join } from 'path'
 import { createHash } from 'crypto'
 import { app } from 'electron'
 
-const VERSION_JSON_URL =
-  'https://raw.githubusercontent.com/bejameja/bejaclient-mc/main/client-version.json'
+const VERSION_JSON_URL = 'http://206.217.141.184:3093/api/jars/version'
 
 export interface ClientVersionInfo {
   version: string
