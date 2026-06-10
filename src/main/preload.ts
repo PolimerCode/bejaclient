@@ -62,11 +62,14 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id: string) => ipcRenderer.invoke('profiles:delete', id),
     getActive: () => ipcRenderer.invoke('profiles:get-active'),
     setActive: (id: string) => ipcRenderer.invoke('profiles:set-active', id),
+    exportPack: (id: string) => ipcRenderer.invoke('profiles:export', id),
+    importPack: () => ipcRenderer.invoke('profiles:import'),
   },
 
   // Mods
   mods: {
     list: (profileId: string) => ipcRenderer.invoke('mods:list', profileId),
+    checkConflicts: (profileId: string) => ipcRenderer.invoke('mods:check-conflicts', profileId),
     install: (profileId: string, filePath: string) =>
       ipcRenderer.invoke('mods:install', profileId, filePath),
     toggle: (profileId: string, modId: string) =>
@@ -74,6 +77,7 @@ contextBridge.exposeInMainWorld('api', {
     delete: (profileId: string, modId: string) =>
       ipcRenderer.invoke('mods:delete', profileId, modId),
     openFolder: (profileId: string) => ipcRenderer.invoke('mods:open-folder', profileId),
+    autoFix: (profileId: string) => ipcRenderer.invoke('mods:auto-fix', profileId),
   },
 
   // Settings
@@ -93,8 +97,14 @@ contextBridge.exposeInMainWorld('api', {
 
   // Modrinth
   modrinth: {
-    search: (query: string, type: 'mod' | 'modpack', gameVersion?: string, loader?: string, offset?: number) =>
-      ipcRenderer.invoke('modrinth:search', query, type, gameVersion, loader, offset),
+    search: (query: string, type: string, gameVersion?: string, loader?: string, offset?: number, categories?: string[]) =>
+      ipcRenderer.invoke('modrinth:search', query, type, gameVersion, loader, offset, categories),
+    categories: () =>
+      ipcRenderer.invoke('modrinth:categories'),
+    exploreSearch: (query: string, type: string, source: string, gameVersion?: string, loader?: string, offset?: number, categories?: string[]) =>
+      ipcRenderer.invoke('explore:search', query, type, source, gameVersion, loader, offset, categories),
+    installCurseforge: (modId: string, projectType: string, profileId: string) =>
+      ipcRenderer.invoke('curseforge:install', modId, projectType, profileId),
     versions: (projectId: string, gameVersion?: string, loader?: string) =>
       ipcRenderer.invoke('modrinth:versions', projectId, gameVersion, loader),
     installMod: (projectId: string, profileId: string) =>
@@ -129,6 +139,14 @@ contextBridge.exposeInMainWorld('api', {
     onClear:  (cb: ()             => void) => ipcRenderer.on('console:clear',  ()      => cb()),
   },
 
+  // BejaClient player lookup
+  players: {
+    lookup:     (username: string)                  => ipcRenderer.invoke('players:lookup', username),
+    saveSkin:   (skinUrl: string, username: string) => ipcRenderer.invoke('players:save-skin', skinUrl, username),
+    fetchImage: (url: string)                       => ipcRenderer.invoke('players:fetchImage', url),
+    mcProfile:  (accessToken: string)               => ipcRenderer.invoke('players:mc-profile', accessToken),
+  },
+
   // BejaClient friends & presence
   friends: {
     connect:        ()                   => ipcRenderer.invoke('friends:connect'),
@@ -140,6 +158,68 @@ contextBridge.exposeInMainWorld('api', {
     onOnline:  (cb: (d: { uuid: string; username: string }) => void) => ipcRenderer.on('friend:online',  (_e, d) => cb(d)),
     onOffline: (cb: (d: { uuid: string })                  => void) => ipcRenderer.on('friend:offline', (_e, d) => cb(d)),
     onRequest: (cb: (d: { uuid: string; username: string }) => void) => ipcRenderer.on('friend:request', (_e, d) => cb(d)),
+  },
+
+  // Lobby / party
+  lobby: {
+    emit: (event: string, data: unknown) => ipcRenderer.invoke('lobby:emit', event, data),
+    startWithServer: (profileId: string, server: string, port: number) =>
+      ipcRenderer.invoke('launch:start-server', profileId, server, port),
+    onPartyState:    (cb: (d: unknown) => void) => ipcRenderer.on('party:state',         (_e, d) => cb(d)),
+    onMemberJoined:  (cb: (d: unknown) => void) => ipcRenderer.on('party:member_joined', (_e, d) => cb(d)),
+    onMemberLeft:    (cb: (d: unknown) => void) => ipcRenderer.on('party:member_left',   (_e, d) => cb(d)),
+    onReadyUpdate:   (cb: (d: unknown) => void) => ipcRenderer.on('party:ready_update',  (_e, d) => cb(d)),
+    onSkinUpdate:    (cb: (d: unknown) => void) => ipcRenderer.on('party:skin_update',   (_e, d) => cb(d)),
+    onLaunched:      (cb: (d: unknown) => void) => ipcRenderer.on('party:launched',      (_e, d) => cb(d)),
+    onDisbanded:     (cb: ()           => void) => ipcRenderer.on('party:disbanded',     ()      => cb()),
+    onSpeaking:      (cb: (d: unknown) => void) => ipcRenderer.on('voice:speaking',      (_e, d) => cb(d)),
+    onVoiceOffer:    (cb: (d: unknown) => void) => ipcRenderer.on('voice:offer',         (_e, d) => cb(d)),
+    onVoiceAnswer:   (cb: (d: unknown) => void) => ipcRenderer.on('voice:answer',        (_e, d) => cb(d)),
+    onVoiceIce:      (cb: (d: unknown) => void) => ipcRenderer.on('voice:ice',           (_e, d) => cb(d)),
+  },
+
+  // Cosmetics / Locker
+  cosmetics: {
+    get:    (uuid: string)                                                               => ipcRenderer.invoke('cosmetics:get', uuid),
+    update: (data: { cape_url?: string | null; cape_type?: string; equipped?: string[] }) => ipcRenderer.invoke('cosmetics:update', data),
+  },
+
+  // Community Capes
+  capes: {
+    list:   (offset?: number)                  => ipcRenderer.invoke('capes:list', offset),
+    upload: (filePath: string, name: string)   => ipcRenderer.invoke('capes:upload', filePath, name),
+    report: (id: number)                       => ipcRenderer.invoke('capes:report', id),
+  },
+
+  // Client Pass
+  pass: {
+    get:      () => ipcRenderer.invoke('pass:get'),
+    progress: () => ipcRenderer.invoke('pass:progress'),
+    daily:    () => ipcRenderer.invoke('pass:daily'),
+  },
+
+  // Install tracking
+  installs: {
+    get: () => ipcRenderer.invoke('installs:get'),
+  },
+
+  // Servers
+  servers: {
+    list: () => ipcRenderer.invoke('servers:list'),
+    ping: (host: string, port: number) => ipcRenderer.invoke('servers:ping', host, port),
+    add: (host: string, port: number, name: string) => ipcRenderer.invoke('servers:add', host, port, name),
+    remove: (id: string) => ipcRenderer.invoke('servers:remove', id),
+    addToProfile: (host: string, port: number, name: string, favicon: string | null, profileId: string) =>
+      ipcRenderer.invoke('servers:add-to-profile', host, port, name, favicon, profileId),
+    onPingResult: (cb: (data: unknown) => void) =>
+      ipcRenderer.on('servers:ping-result', (_e, d) => cb(d)),
+  },
+
+  // Chat
+  chat: {
+    send:      (toUuid: string, content: string) => ipcRenderer.invoke('chat:send', toUuid, content),
+    history:   (targetUuid: string)              => ipcRenderer.invoke('chat:history', targetUuid),
+    onMessage: (cb: (msg: unknown) => void)      => { ipcRenderer.on('chat:message', (_e, d) => cb(d)) },
   },
 
   // Auto-updater

@@ -5,7 +5,7 @@ import { join } from 'path'
 import { createHash } from 'crypto'
 import { app } from 'electron'
 
-const VERSION_JSON_URL = 'http://206.217.141.184:3093/api/jars/version'
+const VERSION_JSON_URL = 'http://206.217.141.184:3093/api/jars/current'
 
 export interface ClientVersionInfo {
   version: string
@@ -63,13 +63,27 @@ export function resolveBootstrapJar(): string | null {
   return null
 }
 
+/** Maps a Minecraft version string to the correct adapter JAR prefix. */
+export function adapterJarPrefix(mcVersion: string): string {
+  const m = mcVersion.match(/^1\.(\d+)/)
+  const minor = m ? parseInt(m[1]) : 99
+  if (minor >= 21) return 'beja-v1_21'
+  if (minor >= 20) return 'beja-v1_20'
+  if (minor >= 19) return 'beja-v1_19'
+  if (minor >= 18) return 'beja-v1_18'
+  if (minor >= 16) return 'beja-v1_16'
+  return 'beja-v1_21'
+}
+
 /**
- * Finds the adapter JAR (beja-v*-*.jar). Same search order as the bootstrap.
- * Excludes sources and dev JARs.
+ * Finds the adapter JAR for a given MC version (beja-v1_21-*.jar, beja-v1_20-*.jar, …).
+ * Falls back to any beja-v* JAR if no version-specific one is found.
  */
-export function resolveAdapterJar(): string | null {
-  const isAdapter = (f: string) =>
-    f.startsWith('beja-v') && f.endsWith('.jar') &&
+export function resolveAdapterJar(mcVersion?: string): string | null {
+  const prefix = mcVersion ? adapterJarPrefix(mcVersion) : null
+
+  const isAdapter = (f: string, p: string | null) =>
+    f.startsWith(p ?? 'beja-v') && f.endsWith('.jar') &&
     !f.includes('-sources') && !f.includes('-dev')
 
   const candidates = [
@@ -80,10 +94,12 @@ export function resolveAdapterJar(): string | null {
 
   for (const dir of candidates) {
     if (!existsSync(dir)) continue
-    const jars = readdirSync(dir).filter(isAdapter).sort().reverse()
+    const jars = readdirSync(dir).filter(f => isAdapter(f, prefix)).sort().reverse()
     if (jars.length > 0) return join(dir, jars[0])
   }
 
+  // Fallback: any adapter JAR when version-specific one is missing
+  if (prefix) return resolveAdapterJar()
   return null
 }
 

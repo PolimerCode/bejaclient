@@ -1,5 +1,6 @@
 import { IpcMain, BrowserWindow, dialog, ipcMain as _ipcMain } from 'electron'
-import { writeFileSync } from 'fs'
+import { writeFileSync, readFileSync, existsSync, readdirSync } from 'fs'
+import { join } from 'path'
 import { launchGame, killGame, isRunning } from '../services/launchService'
 import {
   listProfiles,
@@ -16,7 +17,6 @@ import {
   sendConsoleStatus,
   sendConsoleClear,
 } from '../services/consoleWindowService'
-
 export function setupLaunchHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow | null): void {
   ipcMain.on('launch:open-console', () => openConsoleWindow())
 
@@ -88,5 +88,48 @@ export function setupLaunchHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow 
     settings.activeProfileId = id
     saveSettings(settings)
     return getProfile(id)
+  })
+
+  ipcMain.handle('profiles:export', async (_e, id: string) => {
+    const profile = getProfile(id)
+    if (!profile) return { ok: false, error: 'Profile not found' }
+    const settings = getSettings()
+    const gameDir = profile.gameDir || settings.game.defaultGameDir
+    const modsDir = join(gameDir, 'mods')
+    const mods = existsSync(modsDir)
+      ? readdirSync(modsDir).filter(f => f.endsWith('.jar') || f.endsWith('.jar.disabled'))
+      : []
+    const pack = {
+      bejaPackVersion: 1,
+      exportedAt: Date.now(),
+      profile: { ...profile },
+      mods,
+    }
+    const { filePath } = await dialog.showSaveDialog({
+      title: 'Export Profile Pack',
+      defaultPath: `${profile.name.replace(/[^a-z0-9]/gi, '_')}.beja`,
+      filters: [{ name: 'BejaClient Pack', extensions: ['beja'] }],
+    })
+    if (!filePath) return { ok: false, error: 'cancelled' }
+    writeFileSync(filePath, JSON.stringify(pack, null, 2), 'utf-8')
+    return { ok: true, mods: mods.length }
+  })
+
+  ipcMain.handle('profiles:import', async () => {
+    const { filePaths } = await dialog.showOpenDialog({
+      title: 'Import Profile Pack',
+      filters: [{ name: 'BejaClient Pack', extensions: ['beja'] }],
+      properties: ['openFile'],
+    })
+    if (!filePaths[0]) return null
+    try {
+      const raw = JSON.parse(readFileSync(filePaths[0], 'utf-8'))
+      if (raw.bejaPackVersion !== 1) return { error: 'Unsupported pack version' }
+      const { id: _id, createdAt: _c, lastPlayed: _l, ...profileData } = raw.profile
+      const newProfile = createProfile(profileData)
+      return { profile: newProfile, mods: raw.mods as string[] }
+    } catch (e) {
+      return { error: String(e) }
+    }
   })
 }

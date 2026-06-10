@@ -18,32 +18,46 @@ export interface LaunchProfile {
   useBejaClient: boolean
   createdAt: string
   lastPlayed: string | null
+  playtimeMs: number
+  imageUrl?: string | null
 }
 
 function getProfilesPath() {
   return join(app.getPath('userData'), 'profiles.json')
 }
 
+// In-memory cache — populated on first read, invalidated on every write.
+// Eliminates repeated disk reads when multiple IPC handlers fire in quick succession.
+let profilesCache: LaunchProfile[] | null = null
+
 export function listProfiles(): LaunchProfile[] {
+  if (profilesCache !== null) return profilesCache
   const path = getProfilesPath()
-  if (!existsSync(path)) return []
+  if (!existsSync(path)) {
+    profilesCache = []
+    return profilesCache
+  }
   try {
-    return JSON.parse(readFileSync(path, 'utf-8'))
+    profilesCache = JSON.parse(readFileSync(path, 'utf-8')) as LaunchProfile[]
+    return profilesCache
   } catch {
-    return []
+    profilesCache = []
+    return profilesCache
   }
 }
 
 export function saveProfiles(profiles: LaunchProfile[]): void {
+  profilesCache = profiles
   writeFileSync(getProfilesPath(), JSON.stringify(profiles, null, 2), 'utf-8')
 }
 
-export function createProfile(data: Omit<LaunchProfile, 'id' | 'createdAt' | 'lastPlayed'>): LaunchProfile {
+export function createProfile(data: Omit<LaunchProfile, 'id' | 'createdAt' | 'lastPlayed' | 'playtimeMs'>): LaunchProfile {
   const profile: LaunchProfile = {
     ...data,
     id: randomUUID(),
     createdAt: new Date().toISOString(),
     lastPlayed: null,
+    playtimeMs: 0,
   }
   const profiles = listProfiles()
   profiles.push(profile)

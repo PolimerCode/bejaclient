@@ -1,6 +1,13 @@
 @import './reset';
 @import './typography';
 
+@font-face {
+  font-family: 'Mojangles';
+  src: url('../assets/fonts/mojangles.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 #app {
   display: flex;
   flex-direction: column;
@@ -15,20 +22,44 @@
 }
 
 .section-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: $muted;
   margin-bottom: $sp-3;
 }
 
+// ── Floating card — use @extend %card-depth to apply ─────────────────────────
+%card-depth {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  box-shadow:
+    $shadow-inset,
+    $shadow-md;
+  transition:
+    transform    $transition,
+    border-color $transition,
+    box-shadow   $transition;
+
+  &:hover {
+    border-color: $border-strong;
+    transform: translateY(-1px);
+    box-shadow:
+      $shadow-inset-strong,
+      $shadow-lg;
+  }
+}
+
+// ── Divider ───────────────────────────────────────────────────────────────────
 .divider {
   border: none;
   border-top: 1px solid $border;
   margin: $sp-4 0;
 }
 
+// ── Badges ────────────────────────────────────────────────────────────────────
 .badge {
   display: inline-flex;
   align-items: center;
@@ -36,13 +67,17 @@
   border-radius: $radius;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   background: $surface-elevated;
   color: $text-secondary;
   border: 1px solid $border;
+
+  &-release  { color: $success; border-color: rgba(48, 209, 88, 0.25); background: rgba(48, 209, 88, 0.08); }
+  &-snapshot { color: $warning; border-color: rgba(232, 160, 48, 0.25); background: rgba(232, 160, 48, 0.08); }
 }
 
+// ── Empty state ───────────────────────────────────────────────────────────────
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -53,39 +88,25 @@
   color: $muted;
   text-align: center;
 
-  .empty-icon {
-    font-size: 32px;
-    opacity: 0.4;
-  }
-
-  .empty-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: $text-secondary;
-  }
-
-  .empty-text {
-    font-size: 12px;
-  }
+  .empty-icon  { font-size: 32px; opacity: 0.35; }
+  .empty-title { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; color: $text-secondary; }
+  .empty-text  { font-size: 12px; }
 }
 
+// ── Page transitions ──────────────────────────────────────────────────────────
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity $transition;
 }
-
 .fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
+.fade-leave-to { opacity: 0; }
 
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: opacity $transition, transform $transition;
+  transition: opacity $transition-slow, transform $transition-slow;
 }
-
 .slide-up-enter-from,
 .slide-up-leave-to {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(10px);
 }

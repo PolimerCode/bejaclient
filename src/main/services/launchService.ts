@@ -2,8 +2,39 @@ import { ChildProcess } from 'child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
+
+class Log4jParser {
+  private buf = ''
+
+  feed(chunk: string, onLine: (l: string) => void): void {
+    this.buf += chunk
+    let safety = 0
+    while (safety++ < 500) {
+      const xs = this.buf.indexOf('<log4j:Event')
+      if (xs === -1) {
+        const nl = this.buf.lastIndexOf('\n')
+        if (nl >= 0) { this.buf.slice(0, nl).split('\n').filter(Boolean).forEach(onLine); this.buf = this.buf.slice(nl + 1) }
+        break
+      }
+      if (xs > 0) { this.buf.slice(0, xs).split('\n').filter(Boolean).forEach(onLine); this.buf = this.buf.slice(xs) }
+      const xe = this.buf.indexOf('</log4j:Event>')
+      if (xe === -1) break
+      const xml = this.buf.slice(0, xe + 14)
+      this.buf = this.buf.slice(xe + 14)
+      const lvl    = xml.match(/level="([^"]+)"/)?.[1] ?? 'INFO'
+      const thread = xml.match(/thread="([^"]+)"/)?.[1] ?? 'main'
+      const logger = (xml.match(/logger="([^"]+)"/)?.[1] ?? '').split('.').pop() ?? 'MC'
+      const msg    = xml.match(/<log4j:Message><!\[CDATA\[([\s\S]*?)\]\]><\/log4j:Message>/)?.[1]?.trim()
+      const trace  = xml.match(/<log4j:Throwable><!\[CDATA\[([\s\S]*?)\]\]><\/log4j:Throwable>/)?.[1]
+      if (msg) onLine(`[${thread}/${lvl}] (${logger}) ${msg}`)
+      if (trace) trace.split('\n').filter(Boolean).forEach(l => onLine(`  ${l.trim()}`))
+    }
+  }
+
+  reset(): void { this.buf = '' }
+}
 import { getSettings } from './settingsService'
-import { getProfile, type LaunchProfile } from './profileService'
+import { getProfile, updateProfile, type LaunchProfile } from './profileService'
 import { getSelectedAccount, refreshAccount } from './authService'
 import { checkAndUpdateClientJar, resolveAdapterJar, resolveBootstrapJar } from './clientUpdateService'
 
@@ -53,6 +84,7 @@ function buildJvmArgs(profile: LaunchProfile): string[] {
 }
 
 let activeProcess: ChildProcess | null = null
+let sessionStartTime: number | null = null
 
 export function isRunning(): boolean {
   return activeProcess !== null && !activeProcess.killed
@@ -62,6 +94,7 @@ export async function launchGame(
   profileId: string,
   onLog: (line: string) => void,
   onStatus: (status: string) => void,
+  extraMCArgs?: string[],
 ): Promise<void> {
   if (isRunning()) throw new Error('Game is already running')
 
@@ -85,19 +118,14 @@ export async function launchGame(
   onLog(`[Launcher] Profile: ${profile.name} | ${profile.version} | ${profile.loader} | BejaClient: ${profile.useBejaClient}`)
   onLog(`[Launcher] Java: ${javaPath} | Game dir: ${gameDir}`)
 
-  // Auto-update the BejaClient JAR before launch (non-fatal if offline)
-  if (profile.useBejaClient) {
-    await checkAndUpdateClientJar(onLog, onStatus)
-  }
+  await checkAndUpdateClientJar(onLog, onStatus)
 
   const { launch } = await import('@xmcl/core')
 
   onStatus('starting')
 
   const versionId = resolveVersionId(profile.version, profile.loader, gameDir)
-  onLog(`[Launcher] Java: ${javaPath}`)
-  onLog(`[Launcher] Game dir: ${gameDir}`)
-  onLog(`[Launcher] Version: ${versionId}`)
+  onLog(`[Launcher] Version ID: ${versionId}`)
 
   // Always purge any leftover bejaclient mod JARs — BejaClient runs as a Java agent, not a mod
   removeBejaModJars(gameDir, onLog)
@@ -111,7 +139,7 @@ export async function launchGame(
   }
   let adapterWasStaged = false
   if (profile.useBejaClient) {
-    const adapterJar = resolveAdapterJar()
+    const adapterJar = resolveAdapterJar(profile.version)
     if (adapterJar) {
       try {
         if (!existsSync(modsDir)) mkdirSync(modsDir, { recursive: true })
@@ -139,6 +167,7 @@ export async function launchGame(
     minMemory: profile.minRam,
     maxMemory: profile.maxRam,
     extraJVMArgs: buildJvmArgs(profile),
+    extraMCArgs,
     resolution: {
       width: profile.resolution.width,
       height: profile.resolution.height,
@@ -147,21 +176,15 @@ export async function launchGame(
   })
 
   activeProcess = proc
+  sessionStartTime = Date.now()
   onStatus('running')
 
+  const log4j = new Log4jParser()
   proc.stdout?.setEncoding('utf-8')
   proc.stderr?.setEncoding('utf-8')
-  proc.stdout?.on('data', (data: string) => {
-    data
-      .split('\n')
-      .filter(Boolean)
-      .forEach(line => onLog(line))
-  })
+  proc.stdout?.on('data', (data: string) => log4j.feed(data, onLog))
   proc.stderr?.on('data', (data: string) => {
-    data
-      .split('\n')
-      .filter(Boolean)
-      .forEach(line => onLog(`[ERR] ${line}`))
+    data.split('\n').filter(Boolean).forEach(line => onLog(`[ERR] ${line}`))
   })
 
   let exitCode: number | null = null
@@ -170,6 +193,18 @@ export async function launchGame(
     if (adapterWasStaged && existsSync(adapterTempPath)) {
       try { unlinkSync(adapterTempPath) } catch { /* ignore */ }
     }
+    // Track playtime and update lastPlayed
+    const sessionMs = sessionStartTime ? Date.now() - sessionStartTime : 0
+    sessionStartTime = null
+    try {
+      const p = getProfile(profileId)
+      if (p) {
+        updateProfile(profileId, {
+          lastPlayed: new Date().toISOString(),
+          playtimeMs: (p.playtimeMs ?? 0) + sessionMs,
+        })
+      }
+    } catch { /* non-fatal */ }
     activeProcess = null
     onStatus(`stopped:${exitCode ?? 0}`)
   })

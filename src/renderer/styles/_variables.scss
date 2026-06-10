@@ -1,48 +1,66 @@
-// ── Four design tokens (the only colors) ─────────────────────────────────────
-$bg:      #000;
-$surface: #111;
-$text:    #fff;
-$border:  #333;
+// ── Color foundation — deep blue near-blacks ──────────────────────────────────
+$bg:               #1a1a1a;   // deepest — page shell
+$surface:          #222222;   // primary surface — cards, list rows
+$surface-elevated: #2a2a2a;   // elevated — dropdowns, modals, hover targets
+$surface-panel:    #161616;   // sidebar / panel backgrounds
 
-// ── Derived neutrals (aliases for compilation; all gray/white spectrum) ───────
-$surface-elevated: #1a1a1a;
-$border-strong:    #444;
-$text-primary:     #fff;
-$text-secondary:   #ccc;
-$text-nav:         #ccc;
-$text-muted:       #888;
-$muted:            #555;
+// ── Borders — ultra-subtle, rgba-based ───────────────────────────────────────
+$border:        rgba(255, 255, 255, 0.06);   // resting card border
+$border-strong: rgba(255, 255, 255, 0.10);   // hover / focus border
+$border-subtle: rgba(255, 255, 255, 0.04);   // barely-visible dividers
 
-// These were semantic/accent — now neutral so all variable references compile.
-// Primary actions use white bg + black text (see Button.vue variants).
-$primary:       #fff;
-$primary-hover: #ccc;
-$success:       $muted;
-$warning:       $muted;
-$error:         $muted;
+// ── Text hierarchy ────────────────────────────────────────────────────────────
+$text:           #f0f0f0;
+$text-primary:   #f0f0f0;
+$text-secondary: #888888;
+$text-nav:       #555555;
+$text-muted:     #555555;
+$muted:          #555555;
+
+// ── Bioluminescent accent ─────────────────────────────────────────────────────
+$primary:       #3eb8ff;
+$primary-hover: #62c9ff;
+$accent:        #3eb8ff;
+$glow-primary:  rgba(62, 184, 255, 0.18);
+
+// ── Semantic ──────────────────────────────────────────────────────────────────
+$success: #30d158;   // vivid green
+$warning: #e8a030;   // cool amber — not orange
+$error:   #e05050;
 
 // ── Typography ────────────────────────────────────────────────────────────────
-$font-family:    system-ui, sans-serif;
-$font-condensed: system-ui, sans-serif;
-$font-display:   system-ui, sans-serif;
-
-// ── Accent ────────────────────────────────────────────────────────────────────
-$accent:          #27ade0;
-$surface-panel:   #161616;
+$font-family:    'Inter', system-ui, sans-serif;
+$font-condensed: 'Inter', system-ui, sans-serif;
+$font-display:   'Inter', system-ui, sans-serif;
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 $titlebar-height:   0px;
 $navbar-height:     0px;
 $sidebar-width:     176px;
 $right-panel-width: 64px;
-$radius:            6px;
-$radius-sm:       4px;
-$radius-lg:       10px;
+$radius:    10px;
+$radius-sm: 6px;
+$radius-lg: 14px;
 
 // ── Spacing ───────────────────────────────────────────────────────────────────
 $sp-1: 4px;   $sp-2: 8px;   $sp-3: 12px;  $sp-4: 16px;
 $sp-5: 20px;  $sp-6: 24px;  $sp-8: 32px;  $sp-10: 40px;
 
+// ── Easing curves ─────────────────────────────────────────────────────────────
+$ease-out:  cubic-bezier(0.2, 0, 0, 1);        // snappy settle
+$ease-in:   cubic-bezier(0.4, 0, 1, 1);        // quick start
+$ease-both: cubic-bezier(0.4, 0, 0.2, 1);      // Material-style
+
 // ── Motion ────────────────────────────────────────────────────────────────────
-$transition:      120ms ease;
-$transition-fast: 80ms ease;
+$transition:      180ms #{$ease-out};
+$transition-fast: 100ms #{$ease-out};
+$transition-slow: 450ms #{$ease-both};
+
+// ── Shadows — floating card system ───────────────────────────────────────────
+$shadow-xs:    0 1px 3px  rgba(0, 0, 0, 0.40);
+$shadow-sm:    0 2px 8px  rgba(0, 0, 0, 0.45), 0 1px 3px  rgba(0, 0, 0, 0.30);
+$shadow-md:    0 4px 16px rgba(0, 0, 0, 0.50), 0 2px 6px  rgba(0, 0, 0, 0.35);
+$shadow-lg:    0 8px 32px rgba(0, 0, 0, 0.60), 0 4px 12px rgba(0, 0, 0, 0.40);
+$shadow-xl:    0 16px 48px rgba(0, 0, 0, 0.70), 0 8px 24px rgba(0, 0, 0, 0.50);
+$shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);  // inner top highlight
+$shadow-inset-strong: inset 0 1px 0 rgba(255, 255, 255, 0.10);

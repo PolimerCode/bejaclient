@@ -1,13 +1,42 @@
 <template>
-  <RouterView v-if="isConsole" />
+  <!-- Toast is always mounted regardless of route — Teleports to body -->
+  <FriendRequestToast />
+
+  <RouterView v-if="isConsole || isLobby" />
   <div v-else class="app-shell">
-    <NavBar />
-    <main class="main-content" ref="mainRef" @scroll="onScroll">
-      <RouterView v-slot="{ Component }">
-        <component :is="Component" />
-      </RouterView>
-    </main>
-    <RightPanel />
+    <div class="bg-layer" :style="{ backgroundImage: `url(${mazeBg})` }" />
+
+    <!-- Splash screen -->
+    <Transition name="splash">
+      <div v-if="splashVisible" class="splash-screen" :style="{ backgroundImage: `url(${mazeBg})` }">
+        <div class="splash-overlay" />
+        <div class="splash-center">
+          <div class="splash-brand">
+            <img class="splash-icon" :src="logoUrl" alt="BC" />
+            <span class="splash-name"><span class="s-beja">Beja</span><span class="s-client">Client</span></span>
+          </div>
+          <div class="splash-bar-track">
+            <div class="splash-bar-fill" :style="{ width: loadProgress + '%' }" />
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <NavBar v-if="!isConsole && !isLobby" />
+    <div v-if="!isConsole && !isLobby" class="main-col">
+      <AppTopBar />
+      <main class="main-content" ref="mainRef" @scroll="onScroll">
+        <RouterView v-slot="{ Component }">
+          <KeepAlive :max="8">
+            <component :is="Component" />
+          </KeepAlive>
+        </RouterView>
+      </main>
+    </div>
+    <NotificationsDrawer />
+    <CrashAnalyzerModal />
+    <ConflictWarningModal />
+    <InstanceWizard />
     <UpdateNotification />
     <WhatsNewModal />
   </div>
@@ -16,19 +45,34 @@
 <script setup lang="ts">
 import { onMounted, watch, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import NavBar from './components/layout/NavBar.vue'
-import RightPanel from './components/layout/RightPanel.vue'
+import NavBar    from './components/layout/NavBar.vue'
+import AppTopBar from './components/layout/AppTopBar.vue'
+import mazeBg   from './assets/maze-bg.jpg'
+import logoUrl  from './assets/bc-logo-new.png'
+
+import NotificationsDrawer from './components/layout/NotificationsDrawer.vue'
 import UpdateNotification from './components/common/UpdateNotification.vue'
 import WhatsNewModal from './components/common/WhatsNewModal.vue'
+import CrashAnalyzerModal from './components/common/CrashAnalyzerModal.vue'
+import ConflictWarningModal from './components/common/ConflictWarningModal.vue'
+import InstanceWizard from './components/common/InstanceWizard.vue'
+import FriendRequestToast from './components/common/FriendRequestToast.vue'
 import { useScrollState } from './composables/useScrollState'
 import { useAccountStore } from './store/accountStore'
 import { useLauncherStore } from './store/launcherStore'
 import { useSettingsStore } from './store/settingsStore'
 import { useFriendsStore } from './store/friendsStore'
+import { useLobbyStore } from './store/lobbyStore'
+import { useNotificationsStore } from './store/notificationsStore'
+import { useLockerStore } from './store/lockerStore'
 import { playLaunch, playMouseClick, warmAudio } from './composables/useSounds'
 
-const route = useRoute()
+const route     = useRoute()
 const isConsole = computed(() => route.path === '/console')
+const isLobby   = computed(() => route.path === '/lobby')
+
+const splashVisible = ref(true)
+const loadProgress  = ref(0)
 
 const { updateScroll } = useScrollState()
 const mainRef = ref<HTMLElement | null>(null)
@@ -41,6 +85,9 @@ const accountStore  = useAccountStore()
 const launcherStore = useLauncherStore()
 const settingsStore = useSettingsStore()
 const friendsStore  = useFriendsStore()
+const lobbyStore    = useLobbyStore()
+const notifStore    = useNotificationsStore()
+const lockerStore   = useLockerStore()
 
 function applyAccent(color: string) {
   document.documentElement.style.setProperty('--accent', color)
@@ -48,17 +95,59 @@ function applyAccent(color: string) {
 
 onMounted(async () => {
   if (isConsole.value) return  // console window handles its own setup
-  await Promise.all([
-    settingsStore.load(),
-    accountStore.loadAccounts(),
-    launcherStore.loadProfiles(),
-    launcherStore.fetchNews(),
-  ])
+
+  await settingsStore.load()
+  loadProgress.value = 25
+  await accountStore.loadAccounts()
+  loadProgress.value = 50
+
+  // Seed locker store from BejaClient cosmetics + account data
+  const acct = accountStore.selectedAccount
+  if (acct) {
+    const skinUrl = acct.skinUrl
+    const model   = acct.skinModel ?? 'default'
+    let capeUrl   = acct.capeUrl ?? null
+    try {
+      const cosmetics = await window.api.cosmetics.get(acct.uuid) as { cape_url?: string | null } | null
+      if (cosmetics?.cape_url) capeUrl = cosmetics.cape_url
+    } catch { /* non-fatal */ }
+    if (skinUrl) lockerStore.selectSkin({ skinUrl, capeUrl, model })
+  }
+
+  await launcherStore.loadProfiles()
+  loadProgress.value = 75
+  await launcherStore.fetchNews()
+  loadProgress.value = 100
+
+  setTimeout(() => { splashVisible.value = false }, 350)
+
+  for (const req of friendsStore.incomingRequests) {
+    notifStore.addFriendRequest(req.uuid, req.username)
+  }
   applyAccent(settingsStore.settings.appearance.accentColor)
   launcherStore.setupLaunchListeners()
   window.api.friends.onOnline(d  => friendsStore.handleOnline(d))
   window.api.friends.onOffline(d => friendsStore.handleOffline(d))
-  window.api.friends.onRequest(d => friendsStore.handleRequest(d))
+  window.api.friends.onRequest(d => {
+    friendsStore.handleRequest(d)
+    notifStore.addFriendRequest(d.uuid, d.username)
+  })
+
+  // Lobby / party socket events
+  window.api.lobby.onPartyState(d   => lobbyStore.handlePartyState(d as any))
+  window.api.lobby.onMemberJoined(d => lobbyStore.handleMemberJoined(d as any))
+  window.api.lobby.onMemberLeft(d   => lobbyStore.handleMemberLeft(d as any))
+  window.api.lobby.onReadyUpdate(d  => lobbyStore.handleReadyUpdate(d as any))
+  window.api.lobby.onSkinUpdate(d   => lobbyStore.handleSkinUpdate(d as any))
+  window.api.lobby.onSpeaking(d     => lobbyStore.handleSpeaking(d as any))
+  window.api.lobby.onDisbanded(()   => lobbyStore.handleDisbanded())
+  window.api.lobby.onLaunched(async d => {
+    const data = d as { server: string; port: number; profileId: string }
+    try {
+      await window.api.lobby.startWithServer(data.profileId, data.server, data.port)
+    } catch { /* non-fatal */ }
+  })
+
   warmAudio()
   document.addEventListener('mousedown', (e) => { if (e.button === 0) playMouseClick() })
 })
@@ -73,17 +162,125 @@ watch(() => launcherStore.status, (val, prev) => {
 <style lang="scss">
 *, *::before, *::after { box-sizing: border-box; }
 
-body { margin: 0; background: #000; }
+body { margin: 0; background: $bg; }
+
+// ── Splash screen ─────────────────────────────────────────────────────────────
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.splash-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.splash-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.splash-icon {
+  width: 36px;
+  height: 36px;
+  filter: brightness(0) invert(1);
+}
+
+.splash-name {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.s-beja {
+  font-weight: 800;
+  color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.s-client {
+  font-weight: 300;
+  color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.splash-bar-track {
+  width: 360px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.splash-bar-fill {
+  height: 100%;
+  background: #27ADE0;
+  border-radius: 2px;
+  transition: width 300ms ease;
+}
+
+// Transition — clean fade only
+.splash-enter-active { transition: opacity 0.5s ease; }
+.splash-leave-active { transition: opacity 0.6s ease; }
+.splash-enter-from, .splash-leave-to { opacity: 0; }
+
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: -1;
+  pointer-events: none;
+}
 
 .app-shell {
   display: flex;
   flex-direction: row;
   width: 100vw;
   height: 100vh;
-  background: #000;
   overflow: hidden;
   color: $text-primary;
+  background-color: $bg;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    z-index: 0;
+    pointer-events: none;
+  }
 }
+
+.main-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+  isolation: isolate;
+}
+
 
 .main-content {
   flex: 1;
@@ -91,7 +288,7 @@ body { margin: 0; background: #000; }
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  background: #000;
+  background: transparent;
   scrollbar-width: none;
 
   &::-webkit-scrollbar { display: none; }

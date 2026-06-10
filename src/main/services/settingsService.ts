@@ -17,6 +17,10 @@ export interface LauncherSettings {
   keepLauncherOpen: boolean
   autoUpdate: boolean
   concurrentDownloads: number
+  soundEnabled: boolean
+  soundVolume: number
+  soundStyle: 'soft' | 'clicky'
+  curseforgeApiKey: string
 }
 
 export interface AppearanceSettings {
@@ -46,10 +50,14 @@ const defaultSettings: AppSettings = {
     keepLauncherOpen: true,
     autoUpdate: true,
     concurrentDownloads: 16,
+    soundEnabled: true,
+    soundVolume: 50,
+    soundStyle: 'soft',
+    curseforgeApiKey: '',
   },
   appearance: {
     language: 'en',
-    accentColor: '#F97316',
+    accentColor: '#27ade0',
   },
   activeProfileId: null,
 }
@@ -78,18 +86,28 @@ function getSettingsPath() {
   return join(dir, 'settings.json')
 }
 
+// In-memory cache — avoids repeated disk reads across multiple IPC calls per launch.
+let settingsCache: AppSettings | null = null
+
 export function getSettings(): AppSettings {
+  if (settingsCache !== null) return settingsCache
   const path = getSettingsPath()
-  if (!existsSync(path)) return { ...defaultSettings }
+  if (!existsSync(path)) {
+    settingsCache = { ...defaultSettings }
+    return settingsCache
+  }
   try {
     const raw = readFileSync(path, 'utf-8')
-    return deepMerge(defaultSettings, JSON.parse(raw) as Partial<AppSettings>)
+    settingsCache = deepMerge(defaultSettings, JSON.parse(raw) as Partial<AppSettings>)
+    return settingsCache
   } catch {
-    return { ...defaultSettings }
+    settingsCache = { ...defaultSettings }
+    return settingsCache
   }
 }
 
 export function saveSettings(settings: AppSettings): void {
+  settingsCache = settings
   const path = getSettingsPath()
   writeFileSync(path, JSON.stringify(settings, null, 2), 'utf-8')
 }

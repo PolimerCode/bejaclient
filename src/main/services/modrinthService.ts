@@ -66,7 +66,8 @@ export interface ModrinthHit {
   downloads: number
   icon_url: string | null
   latest_version: string
-  game_versions: string[]
+  versions: string[]
+  game_versions?: string[]
   loaders: string[]
 }
 
@@ -81,16 +82,23 @@ export interface ModrinthVersion {
 
 // ── Search ────────────────────────────────────────────────────────────────────
 
+export async function getCategories(): Promise<{ name: string; project_type: string; header: string }[]> {
+  const raw = await get(`${API}/tag/category`)
+  return JSON.parse(raw)
+}
+
 export async function searchModrinth(
   query: string,
   projectType: ModrinthProjectType,
   gameVersion?: string,
   loader?: string,
   offset = 0,
+  categories?: string[],
 ): Promise<{ hits: ModrinthHit[]; total_hits: number }> {
   const facets: string[][] = [[`project_type:${projectType}`]]
   if (gameVersion) facets.push([`versions:${gameVersion}`])
   if (loader && loader !== 'vanilla') facets.push([`categories:${loader}`])
+  if (categories && categories.length > 0) facets.push(categories.map(c => `categories:${c}`))
 
   // Build URL manually — URLSearchParams double-encodes brackets on some Node versions
   const facetsStr = encodeURIComponent(JSON.stringify(facets))
@@ -305,6 +313,7 @@ export async function installModpack(
     javaPath: settings.game.defaultJavaPath,
     jvmArgs: '',
     resolution: settings.game.resolution,
+    useBejaClient: false,
   })
 
   onProgress('Done')

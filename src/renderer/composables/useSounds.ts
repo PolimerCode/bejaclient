@@ -79,8 +79,12 @@ function clickyNoise(c: AudioContext, t: number, freq: number, q: number, gain: 
 
 // ── Hover ──────────────────────────────────────────────────────────────────────
 
+let _lastHover = 0
 export function playHover(): void {
   if (!isEnabled()) return
+  const now = performance.now()
+  if (now - _lastHover < 40) return
+  _lastHover = now
   const c = audio()
   const t = c.currentTime
 
@@ -140,8 +144,12 @@ export function playClick(): void {
 
 // ── Global mouse-down ──────────────────────────────────────────────────────────
 
+let _lastClick = 0
 export function playMouseClick(): void {
   if (!isEnabled()) return
+  const now = performance.now()
+  if (now - _lastClick < 60) return   // drop clicks faster than 60ms apart
+  _lastClick = now
   const c = audio()
   const t = c.currentTime
 

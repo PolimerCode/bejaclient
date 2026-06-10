@@ -24,6 +24,7 @@ export function openConsoleWindow(): void {
     title: 'BejaConsole',
     backgroundColor: '#060809',
     resizable: true,
+    autoHideMenuBar: true,
     icon: getIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/preload.js'),

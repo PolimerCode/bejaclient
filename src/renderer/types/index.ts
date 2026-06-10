@@ -29,6 +29,8 @@ export interface LaunchProfile {
   useBejaClient: boolean
   createdAt: string
   lastPlayed: string | null
+  playtimeMs: number
+  imageUrl?: string | null
 }
 
 export interface RemoteVersion {
@@ -37,6 +39,12 @@ export interface RemoteVersion {
   url: string
   time: string
   releaseTime: string
+}
+
+export interface FabricLoaderVersion {
+  loader: { version: string; stable: boolean }
+  intermediary: { version: string }
+  launcherMeta?: { version: number }
 }
 
 export interface VersionManifest {
@@ -72,6 +80,7 @@ export interface LauncherSettings {
   soundEnabled: boolean
   soundVolume: number
   soundStyle: 'soft' | 'clicky'
+  curseforgeApiKey: string
 }
 
 export interface AppearanceSettings {
@@ -101,9 +110,71 @@ export interface NewsEntry {
   cardBorder?: boolean
 }
 
+export interface PlayerProfile {
+  uuid: string
+  username: string
+  skinUrl: string | null
+  capeUrl: string | null
+  skinModel: 'default' | 'slim'
+}
+
 export type LaunchStatus = 'idle' | 'starting' | 'running' | 'stopping' | 'error'
 
+export interface ChatMessage {
+  id: number
+  fromUuid: string
+  fromUsername: string
+  toUuid: string
+  content: string
+  sentAt: string
+}
+
+export interface PartyMember {
+  uuid: string
+  username: string
+  skinUrl: string | null
+  capeUrl: string | null
+  skinModel: 'default' | 'slim'
+  isLeader: boolean
+  isReady: boolean
+  isSpeaking: boolean
+}
+
+export interface Party {
+  id: string
+  members: PartyMember[]
+  leaderId: string
+}
+
+export interface ServerStatus {
+  id: string
+  name: string
+  host: string
+  port: number
+  featured: boolean
+  online: boolean
+  favicon: string | null
+  version: string | null
+  playersOnline: number
+  playersMax: number
+  motd: string | null
+  ping: number | null
+}
+
 export type ModrinthProjectType = 'mod' | 'modpack' | 'resourcepack' | 'shader' | 'datapack'
+export type ExploreSource = 'modrinth' | 'curseforge' | 'both'
+
+export interface ExploreHit {
+  id: string
+  title: string
+  description: string
+  iconUrl: string | null
+  downloads: number
+  categories: string[]
+  source: 'modrinth' | 'curseforge'
+  projectType: string
+  slug: string
+}
 
 export interface ModrinthHit {
   project_id: string
@@ -115,7 +186,8 @@ export interface ModrinthHit {
   downloads: number
   icon_url: string | null
   latest_version: string
-  game_versions: string[]
+  versions: string[]       // returned by /search endpoint
+  game_versions?: string[] // returned by /project endpoint (not in search results)
   loaders: string[]
 }
 
@@ -126,12 +198,6 @@ export interface ModrinthVersion {
   game_versions: string[]
   loaders: string[]
   files: { url: string; filename: string; primary: boolean; size: number }[]
-}
-
-export interface FabricLoaderVersion {
-  loader: { version: string; stable: boolean }
-  intermediary: { version: string }
-  launcherMeta: { version: number }
 }
 
 export interface VersionProgress {
@@ -181,11 +247,13 @@ declare global {
       }
       profiles: {
         list(): Promise<LaunchProfile[]>
-        create(profile: Omit<LaunchProfile, 'id' | 'createdAt' | 'lastPlayed'>): Promise<LaunchProfile>
+        create(profile: Omit<LaunchProfile, 'id' | 'createdAt' | 'lastPlayed' | 'playtimeMs'>): Promise<LaunchProfile>
         update(id: string, profile: Partial<LaunchProfile>): Promise<LaunchProfile | null>
         delete(id: string): Promise<boolean>
         getActive(): Promise<LaunchProfile | null>
         setActive(id: string): Promise<LaunchProfile | null>
+        exportPack(id: string): Promise<{ ok: boolean; mods?: number; error?: string } | false>
+        importPack(): Promise<{ profile: LaunchProfile; mods: string[] } | { error: string } | null>
       }
       mods: {
         list(profileId: string): Promise<ModInfo[]>
@@ -193,6 +261,8 @@ declare global {
         toggle(profileId: string, modId: string): Promise<ModInfo[]>
         delete(profileId: string, modId: string): Promise<ModInfo[]>
         openFolder(profileId: string): Promise<void>
+        checkConflicts(profileId: string): Promise<string[]>
+        autoFix(profileId: string): Promise<{ fixed: string[] }>
       }
       settings: {
         get(): Promise<AppSettings>
@@ -206,7 +276,10 @@ declare global {
         fetch(): Promise<NewsEntry[]>
       }
       modrinth: {
-        search(query: string, type: ModrinthProjectType, gameVersion?: string, loader?: string, offset?: number): Promise<{ hits: ModrinthHit[]; total_hits: number }>
+        search(query: string, type: ModrinthProjectType, gameVersion?: string, loader?: string, offset?: number, categories?: string[]): Promise<{ hits: ModrinthHit[]; total_hits: number }>
+        categories(): Promise<{ name: string; project_type: string; header: string }[]>
+        exploreSearch(query: string, type: string, source: string, gameVersion?: string, loader?: string, offset?: number, categories?: string[]): Promise<{ hits: ExploreHit[]; total: number }>
+        installCurseforge(modId: string, projectType: string, profileId: string): Promise<boolean>
         versions(projectId: string, gameVersion?: string, loader?: string): Promise<ModrinthVersion[]>
         installMod(projectId: string, profileId: string): Promise<boolean>
         installModpack(projectId: string, versionId: string | null): Promise<{ profileId: string; name: string }>
@@ -222,6 +295,12 @@ declare global {
         platform: string
         openExternal(url: string): Promise<void>
       }
+      players: {
+        lookup(username: string): Promise<PlayerProfile | null>
+        saveSkin(skinUrl: string, username: string): Promise<string>
+        fetchImage(url: string): Promise<string>
+        mcProfile(accessToken: string): Promise<{ id: string; name: string; capes: { id: string; state: string; url: string; alias: string }[] } | null>
+      }
       friends: {
         connect(): Promise<boolean>
         disconnect(): Promise<void>
@@ -233,6 +312,37 @@ declare global {
         onOffline(cb: (d: { uuid: string }) => void): void
         onRequest(cb: (d: { uuid: string; username: string }) => void): void
       }
+      lobby: {
+        emit(event: string, data: unknown): Promise<void>
+        startWithServer(profileId: string, server: string, port: number): Promise<void>
+        onPartyState(cb: (d: Party) => void): void
+        onMemberJoined(cb: (d: PartyMember) => void): void
+        onMemberLeft(cb: (d: { uuid: string }) => void): void
+        onReadyUpdate(cb: (d: { uuid: string; isReady: boolean }) => void): void
+        onSkinUpdate(cb: (d: { uuid: string; skinUrl: string | null; capeUrl: string | null; skinModel: 'default' | 'slim' }) => void): void
+        onLaunched(cb: (d: { server: string; port: number; profileId: string }) => void): void
+        onDisbanded(cb: () => void): void
+        onSpeaking(cb: (d: { uuid: string; isSpeaking: boolean }) => void): void
+        onVoiceOffer(cb: (d: { from: string; sdp: string }) => void): void
+        onVoiceAnswer(cb: (d: { from: string; sdp: string }) => void): void
+        onVoiceIce(cb: (d: { from: string; candidate: RTCIceCandidateInit }) => void): void
+      }
+      installs: {
+        get(): Promise<{ mods: Record<string, string[]>; servers: Record<string, string[]> }>
+      }
+      servers: {
+        list(): Promise<ServerStatus[]>
+        ping(host: string, port: number): Promise<{ favicon: string | null; version: string | null; playersOnline: number; playersMax: number; motd: string | null; ping: number } | null>
+        add(host: string, port: number, name: string): Promise<string>
+        remove(id: string): Promise<boolean>
+        addToProfile(host: string, port: number, name: string, favicon: string | null, profileId: string): Promise<boolean>
+        onPingResult(cb: (data: { id: string; online: boolean; favicon: string | null; version: string | null; playersOnline: number; playersMax: number; motd: string | null; ping: number }) => void): void
+      }
+      chat: {
+        send(toUuid: string, content: string): Promise<void>
+        history(targetUuid: string): Promise<ChatMessage[]>
+        onMessage(cb: (msg: ChatMessage) => void): void
+      }
       updater: {
         check(): Promise<void>
         download(): Promise<void>
@@ -243,6 +353,20 @@ declare global {
         onProgress(cb: (p: { percent: number; transferred: number; total: number; bytesPerSecond: number }) => void): void
         onDownloaded(cb: (info: { version: string }) => void): void
         onError(cb: (msg: string) => void): void
+      }
+      cosmetics: {
+        get(uuid: string): Promise<{ cape_url?: string | null; cape_type?: string; equipped?: string[] } | null>
+        update(data: { cape_url?: string | null; cape_type?: string; equipped?: string[] }): Promise<unknown>
+      }
+      capes: {
+        list(offset?: number): Promise<unknown>
+        upload(filePath: string, name: string): Promise<unknown>
+        report(id: number): Promise<unknown>
+      }
+      pass: {
+        get(): Promise<unknown>
+        progress(): Promise<unknown>
+        daily(): Promise<unknown>
       }
     }
   }

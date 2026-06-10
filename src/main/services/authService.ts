@@ -211,7 +211,7 @@ async function finalizeLogin(liveAccessToken: string, liveRefreshToken: string, 
   const accounts = loadAccounts()
   const existing = accounts.findIndex(a => a.id === account.id)
   if (existing >= 0) {
-    accounts[existing] = { ...accounts[existing], ...account }
+    accounts[existing] = { ...accounts[existing], ...account, selected: accounts[existing].selected }
   } else {
     accounts.push(account)
   }

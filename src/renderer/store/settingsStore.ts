@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, toRaw } from 'vue'
 import type { AppSettings } from '../types'
 
 const defaultSettings: AppSettings = {
@@ -20,6 +20,7 @@ const defaultSettings: AppSettings = {
     soundEnabled: true,
     soundVolume: 50,
     soundStyle: 'soft' as const,
+    curseforgeApiKey: '',
   },
   appearance: {
     language: 'en',
@@ -50,7 +51,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function save() {
-    await window.api.settings.set(settings.value)
+    await window.api.settings.set(toRaw(settings.value))
   }
 
   async function patch(patch: Partial<AppSettings>) {

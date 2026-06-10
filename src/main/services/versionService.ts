@@ -96,22 +96,14 @@ export async function installVersion(
   const versionEntry = manifest.versions.find(v => v.id === versionId)
   if (!versionEntry) throw new Error(`Version ${versionId} not found in manifest`)
 
-  await xmclInstall(versionEntry, gameDir, {
-    onProgress: (written: number, total: number) => {
-      onProgress(`Downloading ${versionId}`, written, total)
-    },
-  } as Parameters<typeof xmclInstall>[2])
+  const resolved = await xmclInstall(versionEntry, gameDir)
 
   onProgress('Installing assets and libraries...', 50, 100)
-  await installDependencies(gameDir, versionId, {
-    onProgress: (written: number, total: number) => {
-      onProgress('Downloading assets', written, total)
-    },
-  } as Parameters<typeof installDependencies>[2])
+  await installDependencies(resolved)
 
   if (loaderType === 'fabric' && loaderVersion) {
     onProgress(`Installing Fabric ${loaderVersion}...`, 80, 100)
-    const artifact = await getFabricLoaderArtifact(loaderVersion, versionId)
+    const artifact = await getFabricLoaderArtifact(versionId, loaderVersion)
     await installFabric(artifact, gameDir)
   }
 

@@ -23,10 +23,13 @@ const canvasEl = ref<HTMLCanvasElement | null>(null)
 const wrapEl = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 
+const ORIGINAL_ROT_Y = -0.36
+
 let viewer: SkinViewer | null = null
 let idleHandle: SubAnimationHandle | null = null
 let walkHandle: SubAnimationHandle | null = null
 let dragLastX = 0
+let snapRaf: number | null = null
 
 onMounted(() => {
   if (!canvasEl.value) return
@@ -38,7 +41,7 @@ onMounted(() => {
     zoom: 0.72,
   })
 
-  viewer.playerWrapper.rotation.y = -0.36
+  viewer.playerWrapper.rotation.y = ORIGINAL_ROT_Y
   idleHandle = viewer.animations.add(IdleAnimation)
 
   applySkin()
@@ -69,6 +72,7 @@ function onKeyDown(e: KeyboardEvent) {
 
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0) return
+  if (snapRaf !== null) { cancelAnimationFrame(snapRaf); snapRaf = null }
   isDragging.value = true
   dragLastX = e.clientX
 }
@@ -82,6 +86,20 @@ function onMouseMove(e: MouseEvent) {
 
 function onMouseUp() {
   isDragging.value = false
+  if (snapRaf !== null) { cancelAnimationFrame(snapRaf); snapRaf = null }
+  snapBack()
+}
+
+function snapBack() {
+  if (!viewer) return
+  const diff = ORIGINAL_ROT_Y - viewer.playerWrapper.rotation.y
+  if (Math.abs(diff) < 0.001) {
+    viewer.playerWrapper.rotation.y = ORIGINAL_ROT_Y
+    snapRaf = null
+    return
+  }
+  viewer.playerWrapper.rotation.y += diff * 0.12
+  snapRaf = requestAnimationFrame(snapBack)
 }
 
 // ── Skin loading ──────────────────────────────────────────────────────────────
@@ -98,6 +116,7 @@ function applySkin() {
 watch(() => props.skinUrl, applySkin)
 
 onUnmounted(() => {
+  if (snapRaf !== null) cancelAnimationFrame(snapRaf)
   document.removeEventListener('keydown', onKeyDown)
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('mouseup', onMouseUp)

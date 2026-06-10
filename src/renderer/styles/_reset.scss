@@ -17,7 +17,7 @@ body,
 body {
   font-family: $font-family;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: $text-primary;
   background: $bg;
   -webkit-font-smoothing: antialiased;
@@ -55,9 +55,10 @@ canvas {
   display: block;
 }
 
+// ── Ultra-thin scrollbars, invisible-ish ─────────────────────────────────────
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 2px;
+  height: 2px;
 }
 
 ::-webkit-scrollbar-track {
@@ -65,10 +66,16 @@ canvas {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: $border-strong;
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 2px;
 
   &:hover {
-    background: $muted;
+    background: rgba(255, 255, 255, 0.14);
   }
+}
+
+// Firefox
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }

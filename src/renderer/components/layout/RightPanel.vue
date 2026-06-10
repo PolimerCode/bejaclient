@@ -19,11 +19,13 @@
 
     <!-- Action icons -->
     <div class="panel-actions">
-      <button class="panel-btn" title="Notifications">
+      <div class="panel-pill">
+      <button class="panel-btn" title="Notifications" @click="notifStore.toggleDrawer()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
           <path d="M13.73 21a2 2 0 01-3.46 0"/>
         </svg>
+        <span v-if="notifStore.unreadCount > 0" class="panel-badge">{{ notifStore.unreadCount }}</span>
       </button>
       <button class="panel-btn" title="Friends" @click="$router.push('/friends')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -34,6 +36,7 @@
         </svg>
         <span v-if="friendsStore.pendingCount > 0" class="panel-badge">{{ friendsStore.pendingCount }}</span>
       </button>
+      </div>
     </div>
 
     <!-- Scrollbar -->
@@ -64,9 +67,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useFriendsStore } from '../../store/friendsStore'
+import { useNotificationsStore } from '../../store/notificationsStore'
 import { useScrollState } from '../../composables/useScrollState'
 
 const friendsStore = useFriendsStore()
+const notifStore   = useNotificationsStore()
 const { scrollPercent, hasScroll } = useScrollState()
 
 const maximized = ref(false)
@@ -138,6 +143,18 @@ function openExternal(url: string) {
   padding: 12px 0 16px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
+}
+
+.panel-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid $border;
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
 // ── Scrollbar ─────────────────────────────────────────────────────────────────

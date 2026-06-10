@@ -10,6 +10,11 @@ import { initDiscordRPC, destroyDiscordRPC } from './services/discordRPC'
 import { setupModrinthHandlers } from './ipc/modrinth'
 import { setupUpdaterHandlers } from './ipc/updater'
 import { setupFriendsHandlers } from './ipc/friends'
+import { setupLobbyHandlers } from './ipc/lobby'
+import { setupCosmeticsHandlers } from './ipc/cosmetics'
+import { setupPassHandlers } from './ipc/pass'
+import { setupCapesHandlers } from './ipc/capes'
+import { setupServerHandlers } from './ipc/servers'
 
 // ── Crash logging ─────────────────────────────────────────────────────────────
 // Runs before anything else so even early failures are captured.
@@ -82,6 +87,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     log('INFO', 'Window ready-to-show')
     mainWindow?.show()
+    mainWindow?.maximize()
   })
 
   // Catch renderer load failures so the app never silently dies.
@@ -98,6 +104,22 @@ function createWindow() {
   mainWindow.webContents.on('render-process-gone', (_e, details) => {
     log('ERROR', `Render process gone: reason=${details.reason} exitCode=${details.exitCode}`)
   })
+
+  if (!isDev) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (
+        input.key === 'F12' ||
+        (input.control && input.shift && input.key === 'I') ||
+        (input.control && input.shift && input.key === 'J') ||
+        (input.control && input.key === 'U')
+      ) {
+        event.preventDefault()
+      }
+    })
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow?.webContents.closeDevTools()
+    })
+  }
 
   if (isDev) {
     log('INFO', 'Loading dev URL http://localhost:5173')
@@ -149,6 +171,11 @@ app.whenReady().then(() => {
   setupModrinthHandlers(ipcMain, () => mainWindow)
   setupUpdaterHandlers(ipcMain, () => mainWindow, log)
   setupFriendsHandlers(ipcMain, () => mainWindow)
+  setupLobbyHandlers(ipcMain, () => mainWindow)
+  setupCosmeticsHandlers(ipcMain)
+  setupPassHandlers(ipcMain)
+  setupCapesHandlers(ipcMain)
+  setupServerHandlers(ipcMain, () => mainWindow)
   initDiscordRPC()
 
   app.on('activate', () => {

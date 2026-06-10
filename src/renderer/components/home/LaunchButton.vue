@@ -1,6 +1,6 @@
 <template>
   <div class="launch-wrap">
-  <div class="launch-split" ref="rootEl">
+  <div class="launch-split" ref="rootEl" :style="{ backgroundImage: `url(${launchBg})` }">
 
     <!-- Main launch area -->
     <button
@@ -9,39 +9,33 @@
       :disabled="status === 'starting' || status === 'stopping'"
       @click="onLaunch"
     >
-      <!-- Idle -->
+      <!-- Idle: show version label below the "Launch" text from the bg image -->
       <template v-if="status === 'idle'">
-        <svg class="launch-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-        </svg>
-        <span class="launch-label">Launch</span>
+        <span v-if="activeProfile" class="launch-version">{{ versionLabel }}</span>
       </template>
 
       <!-- Starting -->
       <template v-else-if="status === 'starting'">
-        <svg class="launch-icon spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-        </svg>
-        <span class="launch-label" :class="{ 'launch-label--status': store.statusMsg }">{{ store.statusMsg || 'Starting…' }}</span>
+        <div class="launch-state-overlay">
+          <svg class="launch-icon spin" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+          <span class="launch-label launch-label--status">{{ store.statusMsg || 'Starting…' }}</span>
+        </div>
       </template>
 
       <!-- Running -->
       <template v-else-if="status === 'running'">
-        <svg class="launch-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="4" y="4" width="16" height="16" rx="2"/>
-        </svg>
-        <span class="launch-label">Running</span>
+        <div class="launch-state-overlay">
+          <span class="launch-label">Running</span>
+        </div>
       </template>
 
       <!-- Error -->
       <template v-else-if="status === 'error'">
-        <svg class="launch-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <span class="launch-label">Retry</span>
+        <div class="launch-state-overlay">
+          <span class="launch-label launch-label--error">Retry</span>
+        </div>
       </template>
     </button>
 
@@ -86,6 +80,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useLauncherStore } from '../../store/launcherStore'
+import launchBg from '../../assets/launch-btn-bg.png'
 
 const store = useLauncherStore()
 const status = computed(() => store.status)
@@ -93,6 +88,22 @@ const profiles = computed(() => store.profiles)
 const activeProfile = computed(() => store.activeProfile)
 const dropdownOpen = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
+
+const LOADER_NAMES: Record<string, string> = {
+  fabric: 'Fabric',
+  forge: 'Forge',
+  neoforge: 'NeoForge',
+  quilt: 'Quilt',
+  vanilla: '',
+}
+
+const versionLabel = computed(() => {
+  const p = activeProfile.value
+  if (!p) return ''
+  if (p.useBejaClient) return `BJC ${p.version}`
+  const name = LOADER_NAMES[p.loader] ?? p.loader
+  return name ? `${name} ${p.version}` : p.version
+})
 
 function onLaunch() {
   if (status.value === 'running') {
@@ -156,51 +167,37 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
   position: relative;
   display: flex;
   align-items: stretch;
-  width: 275px;
-  height: 70px;
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius-lg;
+  width: 340px;
+  height: 80px;
+  border: none;
+  border-radius: 0;
   overflow: visible;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(6px);
 }
 
 .launch-main {
   flex: 1;
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 2px;
   background: none;
   border: none;
-  border-radius: $radius-lg 0 0 $radius-lg;
   cursor: pointer;
-  color: $text-primary;
-  transition: background 150ms;
+  transition: opacity 120ms;
 
-  &:hover:not(:disabled) {
-    background: $surface-elevated;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-
-  &.running {
-    color: $text-secondary;
-    .launch-icon { color: $text-secondary; }
-  }
-
-  &.error {
-    color: $text-secondary;
-  }
+  &:hover:not(:disabled) { opacity: 0.85; }
+  &:disabled { cursor: not-allowed; opacity: 0.6; }
 }
 
 .launch-icon {
   flex-shrink: 0;
-  &.spin {
-    animation: spin 0.9s linear infinite;
-  }
+  color: #fff;
+  &.spin { animation: spin 0.9s linear infinite; }
 }
 
 @keyframes spin {
@@ -208,47 +205,74 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
 }
 
 .launch-label {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+  font-family: 'Mojangles', sans-serif;
+  font-size: 30px;
+  font-weight: 400;
   line-height: 1;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.55), 0 0 12px rgba(255,255,255,0.25);
 
   &--status {
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px;
+    max-width: 200px;
+    text-shadow: none;
   }
+
+  &--error { color: #ff6b6b; }
+}
+
+.launch-version {
+  position: absolute;
+  bottom: 13px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: 'Mojangles', sans-serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+  background: transparent;
+}
+
+.launch-state-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 0;
 }
 
 .launch-divider {
   width: 1px;
-  background: $border;
+  background: rgba(255, 255, 255, 0.18);
   flex-shrink: 0;
-  margin: 12px 0;
+  align-self: stretch;
 }
 
 .launch-chevron {
-  width: 52px;
+  width: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: none;
-  border-radius: 0 $radius-lg $radius-lg 0;
-  color: $text-secondary;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  transition: background 150ms, color 150ms;
+  transition: opacity 120ms;
   flex-shrink: 0;
 
-  &:hover:not(:disabled) {
-    background: $surface-elevated;
-    color: $text-primary;
-  }
-
+  &:hover:not(:disabled) { opacity: 0.7; }
   &:disabled { cursor: not-allowed; }
 }
 
