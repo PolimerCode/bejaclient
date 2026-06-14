@@ -13,4 +13,6 @@ declare module '*.webp' { const src: string; export default src }
 declare module '*.mp4'  { const src: string; export default src }
 declare module '*.wav'  { const src: string; export default src }
 declare module '*.glb'  { const src: string; export default src }
+declare module '*.gltf' { const src: string; export default src }
+declare module '*.gltf?url' { const src: string; export default src }
 declare module '*?raw'  { const content: string; export default content }

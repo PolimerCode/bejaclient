@@ -7,9 +7,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { SkinViewer, WalkingAnimation, IdleAnimation, createOrbitControls } from 'skinview3d'
-import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import type { Object3D } from 'three'
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
+import type { Object3D, AnimationClip } from 'three'
 import { AnimationMixer, Clock } from 'three'
 
 import wingsGltfRaw from '../../assets/cosmetics/wings.gltf?raw'
@@ -80,7 +80,7 @@ function loadWings() {
   if (!viewer || wingsLoading) return
   wingsLoading = true
   const loader = new GLTFLoader()
-  loader.parse(wingsGltfRaw, '', gltf => {
+  loader.parse(wingsGltfRaw, '', (gltf: GLTF) => {
     wingsLoading = false
     if (!viewer) return
     wingsObject = gltf.scene
@@ -91,7 +91,7 @@ function loadWings() {
 
     if (gltf.animations.length > 0) {
       wingsMixer = new AnimationMixer(wingsObject)
-      gltf.animations.forEach(clip => wingsMixer!.clipAction(clip).play())
+      gltf.animations.forEach((clip: AnimationClip) => wingsMixer!.clipAction(clip).play())
       wingsClock.start()
       const tick = () => {
         wingsRafId = requestAnimationFrame(tick)
@@ -99,7 +99,7 @@ function loadWings() {
       }
       tick()
     }
-  }, err => {
+  }, (err: unknown) => {
     wingsLoading = false
     console.error('[Wings] parse error:', err)
   })
@@ -111,7 +111,7 @@ function removeWings() {
   wingsMixer = null
   if (!wingsObject) return
   if (viewer) viewer.playerObject.remove(wingsObject)
-  wingsObject.traverse(obj => {
+  wingsObject.traverse((obj: Object3D) => {
     const mesh = obj as any
     mesh.geometry?.dispose()
     if (Array.isArray(mesh.material)) mesh.material.forEach((m: any) => m.dispose())
