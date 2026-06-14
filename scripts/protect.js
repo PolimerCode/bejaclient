@@ -8,9 +8,10 @@ const root = path.resolve(__dirname, '..');
 
 // Step 1: Compile main + preload to V8 bytecode via Electron runtime
 console.log('\n[protect] Compiling main process to bytecode...');
+const electronArgs = process.platform === 'linux' ? ['--no-sandbox'] : [];
 const result = spawnSync(
   electronPath,
-  [path.join(__dirname, 'compile-bytecode-electron.js')],
+  [...electronArgs, path.join(__dirname, 'compile-bytecode-electron.js')],
   {
     stdio: 'inherit',
     cwd: root,
