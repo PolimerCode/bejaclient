@@ -27,6 +27,12 @@
       <!-- Header -->
       <div class="panel-header">
         <span class="panel-title">Friends</span>
+        <span
+          v-if="store.socketStatus !== 'connected'"
+          class="socket-status-dot"
+          :class="store.socketStatus"
+          :title="store.socketStatus === 'error' ? 'Real-time connection failed' : store.socketStatus === 'connecting' ? 'Connecting…' : 'Disconnected'"
+        />
         <button class="add-btn" :class="{ open: showAdd }" @click="toggleAdd()" title="Add friend">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -220,6 +226,22 @@ async function send() {
   font-weight: 600;
   color: $text-primary;
   letter-spacing: 0.02em;
+}
+
+.socket-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: 6px;
+  &.connecting { background: rgba(255,255,255,0.25); animation: pulse-dot 1.2s ease-in-out infinite; }
+  &.disconnected { background: #ffd60a; }
+  &.error { background: #ff453a; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1; }
 }
 
 .add-btn {

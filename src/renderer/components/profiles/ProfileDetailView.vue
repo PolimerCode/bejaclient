@@ -10,10 +10,16 @@
 
     <!-- Header ─────────────────────────────────────────────── -->
     <div class="detail-header">
-      <div class="profile-thumb">
-        <img v-if="profile.imageUrl" :src="profile.imageUrl" class="thumb-img" />
+      <div class="profile-thumb" title="Click to change image" @click="pickImage">
+        <img v-if="localImageUrl" :src="localImageUrl" class="thumb-img" />
         <img v-else :src="iconBlocks" class="thumb-placeholder" />
+        <div class="thumb-hover">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
       </div>
+      <input ref="imageInputRef" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" @change="onImageSelected" />
 
       <div class="profile-info">
         <div class="profile-name">„{{ profile.name }}"</div>
@@ -136,6 +142,39 @@ const emit  = defineEmits<{
 
 const store = useLauncherStore()
 
+const localImageUrl  = ref<string | null>(props.profile.imageUrl ?? null)
+const imageInputRef  = ref<HTMLInputElement | null>(null)
+
+function pickImage() { imageInputRef.value?.click() }
+
+async function onImageSelected(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  ;(e.target as HTMLInputElement).value = ''
+  if (!file) return
+  const resized = await resizeImage(file, 128)
+  localImageUrl.value = resized
+  await store.updateProfile(props.profile.id, { imageUrl: resized })
+}
+
+function resizeImage(file: File, size: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const canvas = document.createElement('canvas')
+      canvas.width = size; canvas.height = size
+      const ctx = canvas.getContext('2d')!
+      const scale = Math.max(size / img.width, size / img.height)
+      const w = img.width * scale, h = img.height * scale
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h)
+      resolve(canvas.toDataURL('image/png', 0.85))
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
 const mods       = ref<ModInfo[]>([])
 const modsLoading = ref(false)
 const menuOpen   = ref(false)
@@ -253,6 +292,22 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  cursor: pointer;
+
+  &:hover .thumb-hover { opacity: 1; }
+}
+
+.thumb-hover {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 150ms;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .thumb-img {

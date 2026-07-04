@@ -1,7 +1,7 @@
 {
   "name": "bejaclient",
   "productName": "BejaClient",
-  "version": "1.3.8",
+  "version": "1.3.21",
   "description": "A Better Minecraft Launcher",
   "author": {
     "name": "Beja",
@@ -12,7 +12,7 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "electron": "electron .",
-    "dist": "npm run build && node scripts/protect.js && electron-builder --win --x64",
+    "dist": "npm run build && node scripts/protect.js && node scripts/generate-installer-bmp.js && electron-builder --win --x64",
     "dist:linux": "npm run build && node scripts/protect.js && electron-builder --linux --x64",
     "dist:dir": "npm run build && node scripts/protect.js && electron-builder --win --x64 --dir"
   },
@@ -53,8 +53,7 @@
     "asar": true,
     "asarUnpack": [
       "node_modules/adm-zip/**/*",
-      "node_modules/discord-rpc/**/*",
-      "node_modules/@xmcl/**/*"
+      "node_modules/discord-rpc/**/*"
     ],
     "win": {
       "icon": "resources/icon.ico",
@@ -66,16 +65,20 @@
           ]
         }
       ],
-      "artifactName": "${productName} Setup ${version}.${ext}",
+      "artifactName": "${productName}-Setup.${ext}",
       "requestedExecutionLevel": "asInvoker",
       "signAndEditExecutable": false
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
       "perMachine": false,
       "installerIcon": "resources/icon.ico",
       "uninstallerIcon": "resources/icon.ico",
       "installerHeaderIcon": "resources/icon.ico",
+      "installerSidebar": "resources/installer/sidebar.bmp",
+      "uninstallerSidebar": "resources/installer/sidebar.bmp",
+      "include": "resources/installer/custom.nsh",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "BejaClient",
@@ -94,7 +97,7 @@
         { "target": "deb",      "arch": ["x64"] },
         { "target": "tar.gz",   "arch": ["x64"] }
       ],
-      "artifactName": "${productName}-${version}.${ext}",
+      "artifactName": "${productName}.${ext}",
       "category": "Game",
       "extraResources": [
         {
@@ -111,9 +114,6 @@
   },
   "dependencies": {
     "@types/adm-zip": "^0.5.8",
-    "@xmcl/core": "^2.15.1",
-    "@xmcl/installer": "^6.1.2",
-    "@xmcl/user": "^4.3.0",
     "adm-zip": "^0.5.17",
     "bytenode": "^1.5.7",
     "discord-rpc": "^4.0.1",

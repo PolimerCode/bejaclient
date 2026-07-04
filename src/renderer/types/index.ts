@@ -32,6 +32,8 @@ export interface LaunchProfile {
   lastPlayed: string | null
   playtimeMs: number
   imageUrl?: string | null
+  backgroundUrl?: string | null
+  isolateProfile?: boolean
 }
 
 export interface RemoteVersion {
@@ -254,6 +256,7 @@ declare global {
         onStatus(cb: (status: string) => void): void
       }
       console: {
+        ready(): void
         onLog(cb: (line: string) => void): void
         onStatus(cb: (s: string) => void): void
         onClear(cb: () => void): void
@@ -328,6 +331,13 @@ declare global {
         onOnline(cb: (d: { uuid: string; username: string }) => void): void
         onOffline(cb: (d: { uuid: string }) => void): void
         onRequest(cb: (d: { uuid: string; username: string }) => void): void
+        onAccepted(cb: (d: { uuid: string; username: string }) => void): void
+        onRemoved(cb: (d: { uuid: string }) => void): void
+        onSocketStatus(cb: (status: 'connected' | 'disconnected' | 'error') => void): void
+      }
+      stats: {
+        online(): Promise<number>
+        onOnlineCount(cb: (count: number) => void): void
       }
       lobby: {
         emit(event: string, data: unknown): Promise<void>
@@ -344,6 +354,7 @@ declare global {
         onVoiceOffer(cb: (d: { from: string; sdp: string }) => void): void
         onVoiceAnswer(cb: (d: { from: string; sdp: string }) => void): void
         onVoiceIce(cb: (d: { from: string; candidate: RTCIceCandidateInit }) => void): void
+        onInviteReceived(cb: (d: { partyId: string; fromUuid: string; fromUsername: string }) => void): void
       }
       installs: {
         get(): Promise<{ mods: Record<string, string[]>; servers: Record<string, string[]> }>
@@ -359,7 +370,9 @@ declare global {
       chat: {
         send(toUuid: string, content: string): Promise<void>
         history(targetUuid: string): Promise<ChatMessage[]>
+        sendTyping(toUuid: string): Promise<void>
         onMessage(cb: (msg: ChatMessage) => void): void
+        onTyping(cb: (d: { fromUuid: string }) => void): void
       }
       updater: {
         check(): Promise<void>

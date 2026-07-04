@@ -148,12 +148,6 @@ async function doJoin(): Promise<void> {
 </script>
 
 <style lang="scss" scoped>
-@property --invite-angle {
-  syntax: '<angle>';
-  initial-value: 45deg;
-  inherits: false;
-}
-
 // ── Backdrop ──────────────────────────────────────────────────────────────────
 .invite-backdrop {
   position: fixed;
@@ -170,33 +164,14 @@ async function doJoin(): Promise<void> {
 // ── Panel ─────────────────────────────────────────────────────────────────────
 .invite-panel {
   width: 360px;
-  border-radius: $radius-lg;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 92px);
-  box-shadow:
-    0 40px 100px rgba(0, 0, 0, 0.75),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-
-  border: 1px solid transparent;
-  background-image:
-    linear-gradient(160deg, rgba(255,255,255,0.035) 0%, $surface-elevated 30%, $surface-elevated 100%),
-    conic-gradient(
-      from var(--invite-angle),
-      rgba(255, 255, 255, 0.03) 0%,
-      rgba(255, 255, 255, 0.5)  10%,
-      rgba(255, 255, 255, 0.03) 20%,
-      rgba(255, 255, 255, 0.03) 50%,
-      rgba(255, 255, 255, 0.5)  60%,
-      rgba(255, 255, 255, 0.03) 70%,
-      rgba(255, 255, 255, 0.03) 100%
-    );
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  transition: --invite-angle 500ms cubic-bezier(0.2, 0, 0, 1);
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.61);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.75);
   overflow: hidden;
-
-  &:hover { --invite-angle: 160deg; }
 }
 
 // ── Header / tabs ─────────────────────────────────────────────────────────────
@@ -258,15 +233,14 @@ async function doJoin(): Promise<void> {
   gap: 10px;
   margin: 14px 18px;
   padding: 9px 14px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 8px;
+  background: #0a0a0b;
+  border: 1px solid rgba(137, 137, 137, 0.5);
+  border-radius: 0;
   transition: border-color 200ms;
   flex-shrink: 0;
 
   &:focus-within {
-    border-color: rgba(62, 184, 255, 0.35);
-    background: rgba(62, 184, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.61);
   }
 }
 
@@ -362,23 +336,23 @@ async function doJoin(): Promise<void> {
 
 .invite-btn {
   padding: 6px 16px;
-  border-radius: $radius-sm;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.05);
-  color: $text-secondary;
+  border-radius: 0;
+  border: 1px solid rgba(137, 137, 137, 0.5);
+  background: #0d0d0d;
+  color: #aaa;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 150ms, color 150ms, border-color 150ms;
-  font-family: $font-family;
+  transition: background 80ms, color 80ms, border-color 80ms;
+  font-family: 'Mojangles', monospace;
 
   &:not(:disabled):hover {
-    background: rgba(62, 184, 255, 0.18);
-    border-color: rgba(62, 184, 255, 0.5);
-    color: $accent;
+    background: #1a1a1a;
+    border-color: rgba(255, 255, 255, 0.61);
+    color: #fff;
   }
   &:disabled { opacity: 0.35; cursor: default; }
 }
@@ -416,9 +390,9 @@ async function doJoin(): Promise<void> {
 
 .join-code-input {
   flex: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: $radius-sm;
+  background: #0a0a0b;
+  border: 1px solid rgba(137, 137, 137, 0.5);
+  border-radius: 0;
   padding: 12px 16px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 20px;
@@ -427,35 +401,35 @@ async function doJoin(): Promise<void> {
   color: $text-primary;
   text-transform: uppercase;
   outline: none;
-  transition: border-color 200ms, box-shadow 200ms, background 200ms;
+  transition: border-color 200ms, background 200ms;
   text-align: center;
 
   &::placeholder { color: rgba(255,255,255,0.15); }
   &:focus {
-    border-color: $accent;
-    background: rgba(62, 184, 255, 0.05);
-    box-shadow: 0 0 0 3px rgba(62, 184, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.61);
+    background: #0d0d0d;
   }
 }
 
 .join-btn {
   padding: 12px 22px;
-  border-radius: $radius-sm;
-  border: 1px solid $accent;
-  background: rgba(62, 184, 255, 0.15);
-  color: $accent;
-  font-family: $font-family;
+  border-radius: 0;
+  border: 1px solid rgba(137, 137, 137, 0.5);
+  background: #0d0d0d;
+  color: #aaa;
+  font-family: 'Mojangles', monospace;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background 150ms, box-shadow 150ms;
+  transition: background 80ms, border-color 80ms, color 80ms;
   white-space: nowrap;
 
   &:not(:disabled):hover {
-    background: rgba(62, 184, 255, 0.28);
-    box-shadow: 0 0 16px rgba(62, 184, 255, 0.25);
+    background: #1a1a1a;
+    border-color: rgba(255, 255, 255, 0.61);
+    color: #fff;
   }
   &:disabled { opacity: 0.35; cursor: default; }
 }

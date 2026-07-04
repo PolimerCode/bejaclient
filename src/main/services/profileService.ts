@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 export interface LaunchProfile {
   id: string
   name: string
+  description?: string
   version: string
   loader: 'vanilla' | 'fabric' | 'forge' | 'quilt' | 'neoforge'
   loaderVersion: string
@@ -20,6 +21,8 @@ export interface LaunchProfile {
   lastPlayed: string | null
   playtimeMs: number
   imageUrl?: string | null
+  backgroundUrl?: string | null
+  isolateProfile?: boolean
 }
 
 function getProfilesPath() {
@@ -58,6 +61,12 @@ export function createProfile(data: Omit<LaunchProfile, 'id' | 'createdAt' | 'la
     createdAt: new Date().toISOString(),
     lastPlayed: null,
     playtimeMs: 0,
+  }
+  // Isolated profiles get their own game directory so worlds/mods/settings
+  // don't leak between profiles. launchService falls back to the shared
+  // default dir when gameDir is empty.
+  if (profile.isolateProfile && !profile.gameDir) {
+    profile.gameDir = join(app.getPath('userData'), 'instances', profile.id)
   }
   const profiles = listProfiles()
   profiles.push(profile)

@@ -138,6 +138,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // BejaConsole window
   console: {
+    ready:    () => ipcRenderer.send('console:ready'),
     onLog:    (cb: (line: string) => void) => ipcRenderer.on('console:log',    (_e, l) => cb(l)),
     onStatus: (cb: (s: string)    => void) => ipcRenderer.on('console:status', (_e, s) => cb(s)),
     onClear:  (cb: ()             => void) => ipcRenderer.on('console:clear',  ()      => cb()),
@@ -163,9 +164,19 @@ contextBridge.exposeInMainWorld('api', {
     sendRequest:    (username: string)   => ipcRenderer.invoke('friends:request', username),
     acceptRequest:  (uuid: string)       => ipcRenderer.invoke('friends:accept', uuid),
     removeOrDecline:(uuid: string)       => ipcRenderer.invoke('friends:remove', uuid),
-    onOnline:  (cb: (d: { uuid: string; username: string }) => void) => ipcRenderer.on('friend:online',  (_e, d) => cb(d)),
-    onOffline: (cb: (d: { uuid: string })                  => void) => ipcRenderer.on('friend:offline', (_e, d) => cb(d)),
-    onRequest: (cb: (d: { uuid: string; username: string }) => void) => ipcRenderer.on('friend:request', (_e, d) => cb(d)),
+    onOnline:   (cb: (d: { uuid: string; username: string }) => void) => ipcRenderer.on('friend:online',   (_e, d) => cb(d)),
+    onOffline:  (cb: (d: { uuid: string })                  => void) => ipcRenderer.on('friend:offline',  (_e, d) => cb(d)),
+    onRequest:  (cb: (d: { uuid: string; username: string }) => void) => ipcRenderer.on('friend:request',  (_e, d) => cb(d)),
+    onAccepted: (cb: (d: { uuid: string; username: string }) => void) => ipcRenderer.on('friend:accepted', (_e, d) => cb(d)),
+    onRemoved:  (cb: (d: { uuid: string })                  => void) => ipcRenderer.on('friend:removed',  (_e, d) => cb(d)),
+    onSocketStatus: (cb: (status: 'connected' | 'disconnected' | 'error') => void) =>
+      ipcRenderer.on('socket:status', (_e, s) => cb(s)),
+  },
+
+  // Global player-count stats
+  stats: {
+    online:        ()                        => ipcRenderer.invoke('stats:online'),
+    onOnlineCount: (cb: (count: number) => void) => ipcRenderer.on('stats:online', (_e, d) => cb(d.count)),
   },
 
   // Lobby / party
@@ -185,6 +196,8 @@ contextBridge.exposeInMainWorld('api', {
     onVoiceOffer:    (cb: (d: unknown) => void) => ipcRenderer.on('voice:offer',         (_e, d) => cb(d)),
     onVoiceAnswer:   (cb: (d: unknown) => void) => ipcRenderer.on('voice:answer',        (_e, d) => cb(d)),
     onVoiceIce:      (cb: (d: unknown) => void) => ipcRenderer.on('voice:ice',           (_e, d) => cb(d)),
+    onInviteReceived: (cb: (d: { partyId: string; fromUuid: string; fromUsername: string }) => void) =>
+      ipcRenderer.on('party:invite_received', (_e, d) => cb(d)),
   },
 
   // Cosmetics / Locker
@@ -250,7 +263,9 @@ contextBridge.exposeInMainWorld('api', {
   chat: {
     send:      (toUuid: string, content: string) => ipcRenderer.invoke('chat:send', toUuid, content),
     history:   (targetUuid: string)              => ipcRenderer.invoke('chat:history', targetUuid),
+    sendTyping: (toUuid: string)                  => ipcRenderer.invoke('chat:typing', toUuid),
     onMessage: (cb: (msg: unknown) => void)      => { ipcRenderer.on('chat:message', (_e, d) => cb(d)) },
+    onTyping:  (cb: (d: { fromUuid: string }) => void) => { ipcRenderer.on('chat:typing', (_e, d) => cb(d)) },
   },
 
   // Video

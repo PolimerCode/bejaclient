@@ -14,9 +14,10 @@ export interface FriendRequest {
 }
 
 export const useFriendsStore = defineStore('friends', () => {
-  const friends     = ref<Friend[]>([])
-  const requests    = ref<FriendRequest[]>([])
-  const panelHidden = ref(false)
+  const friends        = ref<Friend[]>([])
+  const requests       = ref<FriendRequest[]>([])
+  const panelHidden    = ref(false)
+  const socketStatus   = ref<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting')
 
   const incomingRequests = computed(() => requests.value.filter(r => r.direction === 'incoming'))
   const outgoingRequests = computed(() => requests.value.filter(r => r.direction === 'outgoing'))
@@ -31,6 +32,8 @@ export const useFriendsStore = defineStore('friends', () => {
   }
 
   async function connect() {
+    socketStatus.value = 'connecting'
+    window.api.friends.onSocketStatus(s => { socketStatus.value = s })
     await window.api.friends.connect()
     await refresh()
   }
@@ -89,11 +92,21 @@ export const useFriendsStore = defineStore('friends', () => {
     }
   }
 
+  // The other party accepted/removed us — refetch rather than patch local state,
+  // since the diff (pending -> friend, or friend -> gone) is cheap to just reload.
+  async function handleAccepted() {
+    await refresh()
+  }
+
+  async function handleRemoved() {
+    await refresh()
+  }
+
   return {
-    friends, requests, panelHidden,
+    friends, requests, panelHidden, socketStatus,
     incomingRequests, outgoingRequests, pendingCount,
     connect, refresh,
     sendRequest, acceptRequest, declineRequest, cancelRequest, removeFriend, togglePanel,
-    handleOnline, handleOffline, handleRequest,
+    handleOnline, handleOffline, handleRequest, handleAccepted, handleRemoved,
   }
 })

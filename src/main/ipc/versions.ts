@@ -7,6 +7,7 @@ import {
   listFabricVersions,
   listForgeVersions,
 } from '../services/versionService'
+import { getSettings } from '../services/settingsService'
 
 export function setupVersionHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('versions:list-remote', async () => {
@@ -21,9 +22,11 @@ export function setupVersionHandlers(ipcMain: IpcMain): void {
   ipcMain.handle(
     'versions:install',
     async (event, versionId: string, loaderType: string, loaderVersion?: string) => {
+      const settings = getSettings()
+      const javaPath = settings.game.defaultJavaPath || 'java'
       await installVersion(versionId, loaderType, loaderVersion, (task, progress, total) => {
         event.sender.send('versions:progress', { task, progress, total })
-      })
+      }, javaPath)
       return getInstalledVersions()
     },
   )

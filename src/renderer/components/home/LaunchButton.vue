@@ -1,6 +1,6 @@
 <template>
   <div class="launch-wrap">
-  <div class="launch-split" ref="rootEl" :style="{ backgroundImage: `url(${launchBg})` }">
+  <div class="launch-split" ref="rootEl">
 
     <!-- Main launch area -->
     <button
@@ -9,8 +9,15 @@
       :disabled="status === 'starting' || status === 'stopping'"
       @click="onLaunch"
     >
-      <!-- Idle: show version label below the "Launch" text from the bg image -->
+      <!-- Idle: rocket + carved LAUNCH label + current profile -->
       <template v-if="status === 'idle'">
+        <svg class="launch-rocket" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+          <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+          <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+          <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+        </svg>
+        <span class="launch-label launch-label--title">LAUNCH</span>
         <span v-if="activeProfile" class="launch-version">{{ versionLabel }}</span>
       </template>
 
@@ -80,7 +87,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useLauncherStore } from '../../store/launcherStore'
-import launchBg from '../../assets/launch-btn-bg.png'
 
 const store = useLauncherStore()
 const status = computed(() => store.status)
@@ -171,12 +177,13 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
   align-items: stretch;
   width: 340px;
   height: 80px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 0;
   overflow: visible;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  backdrop-filter: blur(6px);
+  background: rgba(13, 13, 13, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .launch-main {
@@ -186,7 +193,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
   background: none;
   border: none;
   cursor: pointer;
@@ -206,13 +213,27 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
   to { transform: rotate(360deg); }
 }
 
+// ── Carved-in look — dark shadow up-left (recess wall), faint highlight down-right (lit rim) ──
+.launch-rocket {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.45);
+  filter:
+    drop-shadow(-1px -1px 0.5px rgba(0, 0, 0, 0.9))
+    drop-shadow(1px 1px 0.5px rgba(255, 255, 255, 0.18));
+}
+
 .launch-label {
   font-family: 'Mojangles', sans-serif;
   font-size: 30px;
   font-weight: 400;
   line-height: 1;
-  color: #fff;
-  text-shadow: 2px 2px 0 rgba(0,0,0,0.55), 0 0 12px rgba(255,255,255,0.25);
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: -1px -1px 1px rgba(0, 0, 0, 0.9), 1px 1px 1px rgba(255, 255, 255, 0.18);
+
+  &--title {
+    font-size: 24px;
+    letter-spacing: 0.04em;
+  }
 
   &--status {
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -223,23 +244,21 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 200px;
+    color: rgba(255, 255, 255, 0.7);
     text-shadow: none;
   }
 
-  &--error { color: #ff6b6b; }
+  &--error { color: #ff6b6b; text-shadow: none; }
 }
 
 .launch-version {
-  position: absolute;
-  bottom: 13px;
-  left: 0;
-  right: 0;
   text-align: center;
   font-family: 'Mojangles', sans-serif;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.4);
   line-height: 1;
-  text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+  margin-top: 3px;
+  text-shadow: -1px -1px 1px rgba(0, 0, 0, 0.9), 1px 1px 1px rgba(255, 255, 255, 0.12);
   background: transparent;
 }
 
@@ -257,7 +276,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
 
 .launch-divider {
   width: 1px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
   align-self: stretch;
 }
@@ -269,12 +288,12 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
   justify-content: center;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
-  transition: opacity 120ms;
+  transition: color 120ms, opacity 120ms;
   flex-shrink: 0;
 
-  &:hover:not(:disabled) { opacity: 0.7; }
+  &:hover:not(:disabled) { opacity: 0.7; color: #fff; }
   &:disabled { cursor: not-allowed; }
 }
 
@@ -284,9 +303,9 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
   bottom: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius-lg;
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.61);
+  border-radius: 0;
   overflow: hidden;
   z-index: 10;
 }
@@ -314,7 +333,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside, true
   transition: background 120ms, color 120ms;
 
   &:hover {
-    background: $surface-elevated;
+    background: #1a1a1a;
     color: $text-primary;
   }
 

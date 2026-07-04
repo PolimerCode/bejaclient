@@ -36,6 +36,11 @@ export interface AppSettings {
 }
 
 function getDefaultGameDir(): string {
+  return join(app.getPath('userData'), 'instance')
+}
+
+/** Pre-1.1.18 default — BejaClient used to share the vanilla .minecraft folder. */
+function legacyDefaultGameDir(): string {
   if (process.platform === 'linux') return join(app.getPath('home'), '.minecraft')
   return join(app.getPath('appData'), '.minecraft')
 }
@@ -104,6 +109,13 @@ export function getSettings(): AppSettings {
   try {
     const raw = readFileSync(path, 'utf-8')
     settingsCache = deepMerge(defaultSettings, JSON.parse(raw) as Partial<AppSettings>)
+    // One-time migration: users who never customized their game directory were
+    // silently pinned to the shared vanilla .minecraft folder. Move them to the
+    // isolated instance dir; leave anyone who picked a custom folder alone.
+    if (settingsCache.game.defaultGameDir === legacyDefaultGameDir()) {
+      settingsCache.game.defaultGameDir = getDefaultGameDir()
+      saveSettings(settingsCache)
+    }
     return settingsCache
   } catch {
     settingsCache = { ...defaultSettings }

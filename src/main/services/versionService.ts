@@ -3,7 +3,22 @@ import { getSettings } from './settingsService'
 import { existsSync, readdirSync } from 'fs'
 import { rm } from 'fs/promises'
 import { join } from 'path'
-import { installVersion as xmclInstall, installFabric, getFabricLoaderArtifact, installDependencies } from '@xmcl/installer'
+import {
+  downloadVersionJsonAndJar,
+  resolveVersion,
+  getCurrentPlatform,
+  resolveLibraries,
+  downloadLibraries,
+  downloadAssetIndex,
+  downloadAssets,
+  linkLegacyAssets,
+  fetchFabricLoaderArtifact,
+  installFabricVersionJson,
+  fetchQuiltLoaderArtifact,
+  installQuiltVersionJson,
+  installForge,
+  installNeoForge,
+} from './mcinstall'
 
 export interface RemoteVersion {
   id: string
@@ -36,18 +51,30 @@ function httpsGet(url: string): Promise<string> {
   })
 }
 
+// Fabric/Mojang APIs return plain-text error bodies (e.g. "no loader version X for
+// game version Y") instead of JSON when a version/loader combo is invalid. JSON.parse
+// on that text throws a cryptic "Unexpected token" SyntaxError — surface the actual
+// response body instead so the failure is readable in the launch error dialog.
+function safeJsonParse<T>(raw: string, context: string): T {
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    throw new Error(`${context}: ${raw.slice(0, 200).trim() || '(empty response)'}`)
+  }
+}
+
 export async function fetchVersionManifest(): Promise<VersionManifest> {
   const raw = await httpsGet(
     'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json',
   )
-  return JSON.parse(raw)
+  return safeJsonParse<VersionManifest>(raw, 'Failed to fetch Minecraft version list')
 }
 
 export async function listFabricVersions(mcVersion: string): Promise<FabricLoaderVersion[]> {
   const raw = await httpsGet(
     `https://meta.fabricmc.net/v2/versions/loader/${mcVersion}`,
   )
-  return JSON.parse(raw)
+  return safeJsonParse<FabricLoaderVersion[]>(raw, `No Fabric loader available for Minecraft ${mcVersion}`)
 }
 
 export async function listForgeVersions(mcVersion: string): Promise<string[]> {
@@ -87,9 +114,11 @@ export async function installVersion(
   loaderType: string,
   loaderVersion: string | undefined,
   onProgress: (task: string, progress: number, total: number) => void,
+  javaPath = 'java',
 ): Promise<void> {
   const settings = getSettings()
   const gameDir = settings.game.defaultGameDir
+  const concurrency = settings.launcher.concurrentDownloads
 
   onProgress(`Installing Minecraft ${versionId}...`, 0, 100)
 
@@ -97,15 +126,32 @@ export async function installVersion(
   const versionEntry = manifest.versions.find(v => v.id === versionId)
   if (!versionEntry) throw new Error(`Version ${versionId} not found in manifest`)
 
-  const resolved = await xmclInstall(versionEntry, gameDir)
+  await downloadVersionJsonAndJar(versionEntry, gameDir)
+  const resolved = resolveVersion(gameDir, versionId)
 
   onProgress('Installing assets and libraries...', 50, 100)
-  await installDependencies(resolved)
+  const platform = getCurrentPlatform()
+  const libraries = resolveLibraries(resolved.libraries, platform)
+  await downloadLibraries(libraries, join(gameDir, 'libraries'), concurrency)
+
+  const assetIndex = await downloadAssetIndex(resolved, gameDir)
+  await downloadAssets(assetIndex, gameDir, concurrency)
+  await linkLegacyAssets(assetIndex, resolved, gameDir)
 
   if (loaderType === 'fabric' && loaderVersion) {
     onProgress(`Installing Fabric ${loaderVersion}...`, 80, 100)
-    const artifact = await getFabricLoaderArtifact(versionId, loaderVersion)
-    await installFabric(artifact, gameDir)
+    const artifact = await fetchFabricLoaderArtifact(versionId, loaderVersion)
+    await installFabricVersionJson(artifact, versionId, gameDir)
+  } else if (loaderType === 'quilt' && loaderVersion) {
+    onProgress(`Installing Quilt ${loaderVersion}...`, 80, 100)
+    const artifact = await fetchQuiltLoaderArtifact(versionId, loaderVersion)
+    await installQuiltVersionJson(artifact, versionId, gameDir)
+  } else if (loaderType === 'forge' && loaderVersion) {
+    onProgress(`Installing Forge ${loaderVersion}...`, 80, 100)
+    await installForge(versionId, loaderVersion, gameDir, javaPath, line => onProgress(line, 85, 100))
+  } else if (loaderType === 'neoforge' && loaderVersion) {
+    onProgress(`Installing NeoForge ${loaderVersion}...`, 80, 100)
+    await installNeoForge(versionId, loaderVersion, gameDir, javaPath, line => onProgress(line, 85, 100))
   }
 
   onProgress('Done', 100, 100)

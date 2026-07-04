@@ -381,6 +381,7 @@ async function loadOwnedCapes() {
   ownedCapes.value = collected
   if (bejaActiveUrl) {
     selectedCapeUuid.value = collected.find(c => c.url === bejaActiveUrl)?.id ?? null
+    lockerStore.selectSkin({ skinUrl: lockerStore.skinUrl, capeUrl: bejaActiveUrl, model: lockerStore.model })
   } else {
     selectedCapeUuid.value = collected.find(c => c.state === 'ACTIVE')?.id ?? null
   }
@@ -536,9 +537,10 @@ onMounted(() => {
   loadSkins()
   selectedUuid.value = account.value?.uuid ?? null
   if (account.value?.skinUrl) {
+    const savedCapeUrl = loadLocalCapeUrl()
     lockerStore.selectSkin({
       skinUrl: account.value.skinUrl,
-      capeUrl: account.value.capeUrl,
+      capeUrl: savedCapeUrl ?? account.value.capeUrl,
       model:   account.value.skinModel ?? 'default',
     })
   }

@@ -60,8 +60,15 @@
 }
 
 @keyframes sweep {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  0%   { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  20%  { transform: rotate(90deg); }
+  25%  { transform: rotate(90deg);  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  45%  { transform: rotate(180deg); }
+  50%  { transform: rotate(180deg); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  70%  { transform: rotate(270deg); }
+  75%  { transform: rotate(270deg); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  95%  { transform: rotate(360deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .wip-label {

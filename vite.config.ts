@@ -46,7 +46,7 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron/main',
             rollupOptions: {
-              external: ['electron', '@xmcl/core', '@xmcl/installer', '@xmcl/user', 'bufferutil', 'utf-8-validate'],
+              external: ['electron', 'bufferutil', 'utf-8-validate'],
             },
           },
         },

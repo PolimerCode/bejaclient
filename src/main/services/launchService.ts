@@ -2,7 +2,20 @@ import { ChildProcess } from 'child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
-import { launch } from '@xmcl/core'
+import {
+  resolveVersion,
+  readVersionJsonChain,
+  getCurrentPlatform,
+  resolveLibraries,
+  downloadLibraries,
+  extractNatives,
+  buildClasspath,
+  assembleCommand,
+  spawnGame,
+  listQuiltVersions,
+  listNeoForgeVersions,
+  type ArgContext,
+} from './mcinstall'
 
 class Log4jParser {
   private buf = ''
@@ -37,10 +50,10 @@ class Log4jParser {
 import { getSettings } from './settingsService'
 import { getProfile, updateProfile, type LaunchProfile } from './profileService'
 import { getSelectedAccount, refreshAccount } from './authService'
-import { checkAndUpdateClientJar, resolveAdapterJar, resolveBootstrapJar } from './clientUpdateService'
+import { checkAndUpdateClientJar, resolveAdapterJar, resolveBootstrapJar, hasValidZipEnd } from './clientUpdateService'
 import { ensureCoreMods } from './coreModsService'
 import { patchOptionsFile } from './optionsService'
-import { installVersion, listFabricVersions } from './versionService'
+import { installVersion, listFabricVersions, listForgeVersions } from './versionService'
 import { analyzeCrashLog } from './crashAnalyzer'
 import { enforceModCompatibility } from './modCompatibilityChecker'
 
@@ -111,7 +124,6 @@ const G1GC_FLAGS = [
 
 const ZGC_FLAGS = [
   '-XX:+UseZGC',
-  '-XX:+ZGenerational',           // generational ZGC — stable in Java 21.0.1+
   '-XX:+DisableExplicitGC',
   '-XX:+AlwaysPreTouch',
   '-XX:+UnlockExperimentalVMOptions',
@@ -214,16 +226,27 @@ export async function launchGame(
   if (!existsSync(baseVersionDir) || !loaderAlreadyInstalled) {
     onLog(`[Launcher] Version not installed — downloading ${profile.version}${profile.loader !== 'vanilla' ? ` + ${profile.loader}` : ''}…`)
     let loaderVer = profile.loaderVersion || undefined
-    if (profile.loader === 'fabric' && !loaderVer) {
+    if (!loaderVer) {
       try {
-        const versions = await listFabricVersions(profile.version)
-        loaderVer = (versions.find(v => v.loader.stable) ?? versions[0])?.loader.version
-      } catch { /* use undefined — installVersion will skip fabric step */ }
+        if (profile.loader === 'fabric') {
+          const versions = await listFabricVersions(profile.version)
+          loaderVer = (versions.find(v => v.loader.stable) ?? versions[0])?.loader.version
+        } else if (profile.loader === 'quilt') {
+          const versions = await listQuiltVersions(profile.version)
+          loaderVer = versions[0]?.loader.version
+        } else if (profile.loader === 'forge') {
+          const versions = await listForgeVersions(profile.version)
+          loaderVer = versions[0]
+        } else if (profile.loader === 'neoforge') {
+          const versions = await listNeoForgeVersions(profile.version)
+          loaderVer = versions[versions.length - 1]
+        }
+      } catch { /* use undefined — installVersion will skip the loader step */ }
     }
     await installVersion(profile.version, profile.loader, loaderVer, (task, progress, total) => {
       const pct = total > 0 ? Math.round((progress / total) * 100) : 0
       onLog(`[Download] ${task} (${pct}%)`)
-    })
+    }, javaPath)
     onLog('[Launcher] Download complete.')
   }
 
@@ -260,6 +283,13 @@ export async function launchGame(
   if (profile.useBejaClient) {
     const adapterJar = resolveAdapterJar(profile.version)
     if (adapterJar) {
+      if (!hasValidZipEnd(adapterJar)) {
+        try { unlinkSync(adapterJar) } catch { /* ignore */ }
+        throw new Error(
+          `Adapter JAR at ${adapterJar} is corrupted (truncated download). ` +
+          `It has been removed — relaunch to trigger a fresh download.`
+        )
+      }
       try {
         copyFileSync(adapterJar, adapterTempPath)
         adapterWasStaged = true
@@ -289,29 +319,47 @@ export async function launchGame(
     }
   }
 
-  const proc = await launch({
-    gamePath: gameDir,
-    resourcePath: gameDir,
+  // Re-resolve/download libraries+natives at launch time too — normally a fast
+  // no-op since install already fetched everything, but native extraction and the
+  // classpath string aren't persisted between launches, so this must still run.
+  const resolvedVersion = resolveVersion(gameDir, versionId)
+  const chain = readVersionJsonChain(gameDir, versionId)
+  const baseVersionId = chain[0].id
+  const versionJarPath = join(gameDir, 'versions', baseVersionId, `${baseVersionId}.jar`)
+  const librariesDir = join(gameDir, 'libraries')
+  const nativesDir = join(gameDir, 'versions', versionId, `${versionId}-natives`)
+
+  const platform = getCurrentPlatform()
+  const libraries = resolveLibraries(resolvedVersion.libraries, platform)
+  await downloadLibraries(libraries, librariesDir, settings.launcher.concurrentDownloads)
+  await extractNatives(libraries.filter(lib => lib.isNative), librariesDir, nativesDir)
+  const classpath = buildClasspath(libraries, versionJarPath, librariesDir)
+
+  const argContext: ArgContext = {
+    version: resolvedVersion,
+    gameDir,
+    resourceDir: gameDir,
+    nativesDir,
+    classpath,
     javaPath,
-    version: versionId,
-    accessToken: account.accessToken,
-    gameProfile: {
-      id: account.uuid.replace(/-/g, ''),
-      name: account.username,
+    auth: {
+      uuid: account.uuid.replace(/-/g, ''),
+      username: account.username,
+      accessToken: account.accessToken,
+      userType: 'msa',
     },
-    minMemory: profile.minRam,
-    maxMemory: profile.maxRam,
-    extraJVMArgs: buildJvmArgs(profile),
-    extraMCArgs,
     resolution: {
       width: profile.resolution.width,
       height: profile.resolution.height,
       fullscreen: false,
     },
-    extraExecOption: {
-      env: buildGameEnv(),
-    },
-  })
+    minMemory: profile.minRam,
+    maxMemory: profile.maxRam,
+    launcherVersion: app.getVersion(),
+  }
+
+  const args = assembleCommand(argContext, buildJvmArgs(profile), extraMCArgs ?? [])
+  const proc = spawnGame(javaPath, args, gameDir, { env: buildGameEnv() })
 
   activeProcess = proc
   sessionStartTime = Date.now()

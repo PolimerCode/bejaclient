@@ -42,6 +42,10 @@ jobs:
         shell: pwsh
         run: New-Item -ItemType Directory -Force -Path "resources\beja-libs" | Out-Null
 
+      - name: Generate installer assets
+        shell: pwsh
+        run: node scripts/generate-installer-bmp.js
+
       - name: Build and publish (Windows)
         shell: pwsh
         env:

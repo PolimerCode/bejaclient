@@ -1,4 +1,4 @@
-import { BrowserWindow, app } from 'electron'
+import { BrowserWindow, app, session } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
 import * as https from 'https'
@@ -218,7 +218,10 @@ async function finalizeLogin(liveAccessToken: string, liveRefreshToken: string, 
 }
 
 export function loginWithMicrosoft(mainWindow: BrowserWindow | null): Promise<StoredAccount> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    // Clear stale session cookies so users never get stuck in a broken OAuth loop
+    try { await session.fromPartition('persist:auth').clearStorageData() } catch { /* ignore */ }
+
     const authUrl =
       `${AZURE_AUTH_ENDPOINT}` +
       `?client_id=${AZURE_CLIENT_ID}` +

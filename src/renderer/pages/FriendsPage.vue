@@ -227,7 +227,8 @@
           />
           <div class="chat-header-info">
             <span class="chat-header-name">{{ chatFriend.username }}</span>
-            <span class="chat-header-status" :class="chatFriend.online ? 'online-text' : 'offline-text'">
+            <span v-if="friendTyping" class="chat-header-status typing-text">{{ $t('friends.chat.typing') }}</span>
+            <span v-else class="chat-header-status" :class="chatFriend.online ? 'online-text' : 'offline-text'">
               {{ chatFriend.online ? $t('friends.status.online') : $t('friends.status.offline') }}
             </span>
           </div>
@@ -264,6 +265,7 @@
             spellcheck="false"
             maxlength="2000"
             @keyup.enter="sendChat"
+            @input="onChatInput"
           />
           <button class="chat-send-btn" :disabled="!chatInput.trim()" @click="sendChat">▶</button>
         </div>
@@ -413,11 +415,17 @@ const chatMessages = ref<ChatMessage[]>([])
 const chatInput    = ref('')
 const chatLoading  = ref(false)
 const chatScrollEl = ref<HTMLElement | null>(null)
+const friendTyping = ref(false)
+
+let typingClearTimer: ReturnType<typeof setTimeout> | null = null
+let lastTypingSentAt = 0
 
 async function openChat(friend: ChatFriend) {
   chatFriend.value   = friend
   chatMessages.value = []
   chatLoading.value  = true
+  friendTyping.value = false
+  if (typingClearTimer) { clearTimeout(typingClearTimer); typingClearTimer = null }
   try {
     chatMessages.value = await window.api.chat.history(friend.uuid)
   } catch { /* non-fatal */ }
@@ -429,6 +437,8 @@ function closeChat() {
   chatFriend.value   = null
   chatMessages.value = []
   chatInput.value    = ''
+  friendTyping.value = false
+  if (typingClearTimer) { clearTimeout(typingClearTimer); typingClearTimer = null }
 }
 
 async function sendChat() {
@@ -436,6 +446,15 @@ async function sendChat() {
   if (!content || !chatFriend.value) return
   chatInput.value = ''
   await window.api.chat.send(chatFriend.value.uuid, content)
+}
+
+// Throttled — at most one typing ping per 2s while the user keeps typing
+function onChatInput() {
+  if (!chatFriend.value) return
+  const now = Date.now()
+  if (now - lastTypingSentAt < 2000) return
+  lastTypingSentAt = now
+  window.api.chat.sendTyping(chatFriend.value.uuid)
 }
 
 function scrollChatBottom() {
@@ -457,6 +476,13 @@ onMounted(async () => {
   await friendsStore.refresh()
   loading.value = false
 
+  window.api.chat.onTyping((d: { fromUuid: string }) => {
+    if (!chatFriend.value || d.fromUuid !== chatFriend.value.uuid) return
+    friendTyping.value = true
+    if (typingClearTimer) clearTimeout(typingClearTimer)
+    typingClearTimer = setTimeout(() => { friendTyping.value = false }, 3000)
+  })
+
   window.api.chat.onMessage((msg: ChatMessage) => {
     if (
       chatFriend.value &&
@@ -464,6 +490,9 @@ onMounted(async () => {
     ) {
       chatMessages.value.push(msg)
       scrollChatBottom()
+      // Any incoming message implies they've stopped typing
+      friendTyping.value = false
+      if (typingClearTimer) { clearTimeout(typingClearTimer); typingClearTimer = null }
     }
   })
 })
@@ -879,6 +908,7 @@ onMounted(async () => {
 .online-text  { color: #30d158; }
 .offline-text { color: #333; }
 .pending-text { color: #f59e0b; }
+.typing-text  { color: #f97316; font-style: italic; }
 
 // ── Request actions inside card ───────────────────────────────────────────────
 .card-request-actions {

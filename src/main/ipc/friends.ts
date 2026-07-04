@@ -77,8 +77,9 @@ function fetchPlayerTextures(uuidNoDashes: string): Promise<{ skinUrl: string | 
 
 async function getOrFetchBejaToken(): Promise<string | null> {
   const account = getSelectedAccount()
-  if (!account) return null
+  if (!account) { console.log('[Friends] getOrFetchBejaToken: no selected account'); return null }
   if (account.bejaToken) return account.bejaToken
+  console.log('[Friends] getOrFetchBejaToken: no cached token, fetching from', API_HOST, API_PORT)
   // Account predates bejaToken — fetch one now and persist it
   try {
     const token = await new Promise<string | null>(resolve => {
@@ -90,11 +91,12 @@ async function getOrFetchBejaToken(): Promise<string | null> {
         let data = ''
         res.on('data', c => (data += c))
         res.on('end', () => {
+          console.log('[Friends] getOrFetchBejaToken: login response status', res.statusCode, 'body', data)
           try { resolve((JSON.parse(data) as { token?: string }).token ?? null) } catch { resolve(null) }
         })
       })
-      req.on('error', () => resolve(null))
-      req.setTimeout(5000, () => { req.destroy(); resolve(null) })
+      req.on('error', e => { console.log('[Friends] getOrFetchBejaToken: request error', e.message); resolve(null) })
+      req.setTimeout(5000, () => { console.log('[Friends] getOrFetchBejaToken: request timed out'); req.destroy(); resolve(null) })
       req.write(body)
       req.end()
     })
@@ -104,7 +106,7 @@ async function getOrFetchBejaToken(): Promise<string | null> {
       if (idx >= 0) { accounts[idx].bejaToken = token; saveAccounts(accounts) }
       return token
     }
-  } catch { /* non-fatal */ }
+  } catch (e) { console.log('[Friends] getOrFetchBejaToken: unexpected error', e) }
   return null
 }
 
@@ -128,18 +130,32 @@ export function setupFriendsHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   })
 
   ipcMain.handle('friends:request', async (_e, username: string) => {
-    const token = await getOrFetchBejaToken()
-    if (!token) return { error: 'not_logged_in' }
-    // Look up by username in BejaClient server (works for cracked + premium)
-    const serverUser = await apiRequest('GET', `/api/users/lookup/${encodeURIComponent(username)}`, token) as { uuid?: string; error?: string }
-    if (serverUser?.uuid) {
-      return apiRequest('POST', '/api/friends/request', token, { targetUuid: serverUser.uuid })
+    try {
+      const token = await getOrFetchBejaToken()
+      console.log('[Friends] sendRequest: token present?', !!token)
+      if (!token) return { error: 'not_logged_in' }
+      // Look up by username in BejaClient server (works for cracked + premium)
+      const serverUser = await apiRequest('GET', `/api/users/lookup/${encodeURIComponent(username)}`, token) as { uuid?: string; error?: string }
+      console.log('[Friends] sendRequest: lookup result:', serverUser)
+      if (serverUser?.uuid) {
+        const result = await apiRequest('POST', '/api/friends/request', token, { targetUuid: serverUser.uuid })
+        console.log('[Friends] sendRequest: request result (beja user):', result)
+        return result
+      }
+      // Fall back to Mojang for users not yet registered on BejaClient.
+      // Keep the UUID undashed here — that's the format used everywhere else
+      // (JWT payload, users.uuid, the server's online-socket map), unlike the
+      // dashed format used for display purposes elsewhere in this file.
+      const profile = await mojangLookup(username)
+      console.log('[Friends] sendRequest: mojang lookup:', profile)
+      if (!profile) return { error: 'not_found' }
+      const result = await apiRequest('POST', '/api/friends/request', token, { targetUuid: profile.id, targetUsername: profile.name })
+      console.log('[Friends] sendRequest: request result (mojang fallback):', result)
+      return result
+    } catch (err) {
+      console.error('[Friends] sendRequest failed:', err)
+      return { error: 'error' }
     }
-    // Fall back to Mojang for users not yet registered on BejaClient
-    const profile = await mojangLookup(username)
-    if (!profile) return { error: 'not_found' }
-    const targetUuid = addUuidDashes(profile.id)
-    return apiRequest('POST', '/api/friends/request', token, { targetUuid })
   })
 
   ipcMain.handle('friends:accept', async (_e, requesterUuid: string) => {
@@ -294,6 +310,15 @@ export function setupFriendsHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
 
   ipcMain.handle('chat:send', (_e, toUuid: string, content: string) => {
     emitLobbyEvent('chat:send', { toUuid, content })
+  })
+
+  ipcMain.handle('chat:typing', (_e, toUuid: string) => {
+    emitLobbyEvent('chat:typing', { toUuid })
+  })
+
+  ipcMain.handle('stats:online', async () => {
+    const res = await apiRequest('GET', '/api/stats/online', '').catch(() => null) as { count?: number } | null
+    return res?.count ?? 0
   })
 
   ipcMain.handle('chat:history', async (_e, targetUuid: string) => {

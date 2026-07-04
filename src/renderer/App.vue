@@ -1,6 +1,7 @@
 <template>
-  <!-- Toast is always mounted regardless of route — Teleports to body -->
+  <!-- Toasts are always mounted regardless of route — Teleport to body -->
   <FriendRequestToast />
+  <PartyInviteToast />
 
   <RouterView v-if="isConsole || isLobby" />
   <div v-else class="app-shell">
@@ -39,6 +40,8 @@
     <InstanceWizard />
     <UpdateNotification />
     <WhatsNewModal />
+    <LoginOverlay :show="!splashVisible && !accountStore.hasAccounts" />
+    <BetaWarningToast />
   </div>
 </template>
 
@@ -58,6 +61,9 @@ import CrashAnalyzerModal from './components/common/CrashAnalyzerModal.vue'
 import ConflictWarningModal from './components/common/ConflictWarningModal.vue'
 import InstanceWizard from './components/common/InstanceWizard.vue'
 import FriendRequestToast from './components/common/FriendRequestToast.vue'
+import PartyInviteToast from './components/common/PartyInviteToast.vue'
+import LoginOverlay from './components/common/LoginOverlay.vue'
+import BetaWarningToast from './components/common/BetaWarningToast.vue'
 import { useScrollState } from './composables/useScrollState'
 import { useAccountStore } from './store/accountStore'
 import { useLauncherStore } from './store/launcherStore'
@@ -157,6 +163,8 @@ onMounted(async () => {
     friendsStore.handleRequest(d)
     notifStore.addFriendRequest(d.uuid, d.username)
   })
+  window.api.friends.onAccepted(() => friendsStore.handleAccepted())
+  window.api.friends.onRemoved(()  => friendsStore.handleRemoved())
 
   // Lobby / party socket events
   window.api.lobby.onPartyState(d   => lobbyStore.handlePartyState(d as any))
@@ -167,6 +175,7 @@ onMounted(async () => {
   window.api.lobby.onSpeaking(d     => lobbyStore.handleSpeaking(d as any))
   window.api.lobby.onDisbanded(()   => lobbyStore.handleDisbanded())
   window.api.lobby.onError(d        => lobbyStore.handlePartyError(d as any))
+  window.api.lobby.onInviteReceived(d => lobbyStore.handleInviteReceived(d))
   window.api.lobby.onLaunched(async d => {
     const data = d as { server: string; port: number; profileId: string }
     try {

@@ -1,8 +1,21 @@
-import { BrowserWindow, app } from 'electron'
+import { BrowserWindow, app, ipcMain } from 'electron'
 import { join } from 'path'
 
 let consoleWin: BrowserWindow | null = null
+let consoleReady = false
+let logBuffer: string[] = []
 const isDev = !app.isPackaged
+
+// Renderer signals when its IPC listeners are registered (after Vue onMounted).
+ipcMain.on('console:ready', (event) => {
+  if (!consoleWin || consoleWin.isDestroyed()) return
+  if (event.sender !== consoleWin.webContents) return
+  consoleReady = true
+  for (const line of logBuffer) {
+    consoleWin.webContents.send('console:log', line)
+  }
+  logBuffer = []
+})
 
 function getIconPath(): string {
   return app.isPackaged
@@ -15,6 +28,10 @@ export function openConsoleWindow(): void {
     consoleWin.focus()
     return
   }
+
+  // Reset buffer for new window — logs sent before did-finish-load are buffered and replayed.
+  logBuffer = []
+  consoleReady = false
 
   consoleWin = new BrowserWindow({
     width: 860,
@@ -41,13 +58,16 @@ export function openConsoleWindow(): void {
     consoleWin.loadFile(rendererPath, { hash: '/console' })
   }
 
-  consoleWin.on('closed', () => { consoleWin = null })
+  consoleWin.on('closed', () => { consoleWin = null; consoleReady = false })
 }
 
 export function sendConsoleLog(line: string): void {
-  if (consoleWin && !consoleWin.isDestroyed()) {
-    consoleWin.webContents.send('console:log', line)
+  if (!consoleWin || consoleWin.isDestroyed()) return
+  if (!consoleReady) {
+    logBuffer.push(line)
+    return
   }
+  consoleWin.webContents.send('console:log', line)
 }
 
 export function sendConsoleStatus(status: string): void {

@@ -58,6 +58,7 @@ export default {
     chat: {
       noMessages: 'No messages yet',
       messagePlaceholder: 'Message {name}...',
+      typing: 'typing...',
     },
     toast: {
       sent: 'Request sent to {name}',

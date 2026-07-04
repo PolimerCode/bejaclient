@@ -1,7 +1,7 @@
 import { IpcMain, dialog, shell, app } from 'electron'
 import { getSettings, saveSettings, AppSettings } from '../services/settingsService'
 import * as https from 'https'
-import { scanLocalJava } from '@xmcl/installer'
+import { scanLocalJava } from '../services/mcinstall'
 
 function fetchNews(): Promise<unknown[]> {
   return new Promise((resolve, reject) => {

@@ -14,7 +14,7 @@
     <div class="about-grid">
       <div class="about-card">
         <h3 class="card-title">Engine</h3>
-        <p class="card-text">Powered by <span class="highlight">XMCL Core</span> — the most capable open-source Minecraft launcher library. Handles all game launching, authentication, version management, and mod loading.</p>
+        <p class="card-text">Built on <span class="highlight">BejaClient's own launcher core</span> — in-house version resolution, asset/library downloading, and game launching, with no third-party launcher library dependency.</p>
       </div>
       <div class="about-card">
         <h3 class="card-title">Technology</h3>
@@ -25,9 +25,6 @@
     </div>
 
     <div class="about-links">
-      <button class="link-btn" @click="open('https://github.com/Voxelum/x-minecraft-launcher')">
-        XMCL Repository
-      </button>
       <button class="link-btn" @click="open('https://portal.azure.com/')">
         Azure App Setup
       </button>
@@ -50,7 +47,7 @@ import { ref, onMounted } from 'vue'
 const version = ref('…')
 onMounted(async () => { version.value = await window.api.system.getVersion() })
 
-const techs = ['Electron', 'Vue 3', 'TypeScript', 'XMCL Core', 'skinview3d', 'Pinia', 'Vite']
+const techs = ['Electron', 'Vue 3', 'TypeScript', 'skinview3d', 'Pinia', 'Vite']
 
 function open(url: string) {
   window.api.system.openExternal(url)

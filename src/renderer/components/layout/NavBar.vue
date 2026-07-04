@@ -323,17 +323,24 @@ function openExternal(url: string) {
 .wip-clock {
   width: 11px;
   height: 11px;
-  color: #f5a623;
+  color: #e03535;
 }
 
 .clock-min {
   transform-origin: 7px 7px;
-  animation: clock-tick 2s steps(60, end) infinite;
+  animation: clock-tick 4s linear infinite;
 }
 
 @keyframes clock-tick {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  0%   { transform: rotate(0deg);   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  20%  { transform: rotate(90deg); }
+  25%  { transform: rotate(90deg);  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  45%  { transform: rotate(180deg); }
+  50%  { transform: rotate(180deg); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  70%  { transform: rotate(270deg); }
+  75%  { transform: rotate(270deg); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  95%  { transform: rotate(360deg); }
+  100% { transform: rotate(360deg); }
 }
 
 // ── Spacer ────────────────────────────────────────────────────────────────────

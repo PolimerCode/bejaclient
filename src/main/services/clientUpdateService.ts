@@ -1,6 +1,18 @@
 import https from 'https'
 import http from 'http'
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  unlinkSync,
+  renameSync,
+  statSync,
+  openSync,
+  readSync,
+  closeSync,
+} from 'fs'
 import { join } from 'path'
 import { createHash } from 'crypto'
 import { app } from 'electron'
@@ -26,6 +38,35 @@ function computeSha256(filePath: string): Promise<string> {
     stream.on('end', () => resolve(hash.digest('hex')))
     stream.on('error', reject)
   })
+}
+
+/**
+ * Checks that a file ends with a ZIP end-of-central-directory signature
+ * (PK\x05\x06). Cheap way to detect truncated/corrupt jar downloads without
+ * a full zip parser — jars produced by Gradle have no trailing zip comment,
+ * so the EOCD record sits in the last ~22-4096 bytes.
+ */
+export function hasValidZipEnd(filePath: string): boolean {
+  try {
+    const stat = statSync(filePath)
+    if (stat.size < 22) return false
+    const bufSize = Math.min(stat.size, 4096)
+    const buf = Buffer.alloc(bufSize)
+    const fd = openSync(filePath, 'r')
+    try {
+      readSync(fd, buf, 0, bufSize, stat.size - bufSize)
+    } finally {
+      closeSync(fd)
+    }
+    for (let i = buf.length - 22; i >= 0; i--) {
+      if (buf[i] === 0x50 && buf[i + 1] === 0x4b && buf[i + 2] === 0x05 && buf[i + 3] === 0x06) {
+        return true
+      }
+    }
+    return false
+  } catch {
+    return false
+  }
 }
 
 // ── Path resolution ───────────────────────────────────────────────────────────
@@ -156,13 +197,25 @@ function fetchJson<T>(url: string, redirects = 5): Promise<T> {
   })
 }
 
+/**
+ * Downloads to a `.part` sibling of `dest` and only renames it into place once
+ * the transfer is confirmed complete (byte count matches Content-Length, when
+ * present) — so a truncated/interrupted download never lands at the final
+ * path that resolveBootstrapJar/resolveAdapterJar pick up.
+ */
 function downloadFile(
   url: string,
   dest: string,
   onProgress: (pct: number) => void,
   redirects = 5,
 ): Promise<void> {
+  const tempDest = `${dest}.part`
   return new Promise((resolve, reject) => {
+    const fail = (err: Error) => {
+      try { unlinkSync(tempDest) } catch { /* ignore */ }
+      reject(err)
+    }
+
     const mod = url.startsWith('https') ? https : http
     mod
       .get(url, { timeout: 120000 }, res => {
@@ -172,20 +225,34 @@ function downloadFile(
             .then(resolve)
             .catch(reject)
         }
+        if (res.statusCode && res.statusCode >= 400) {
+          res.resume()
+          return fail(new Error(`Server returned HTTP ${res.statusCode}`))
+        }
         const total = parseInt(res.headers['content-length'] ?? '0', 10)
         let received = 0
-        const out = createWriteStream(dest)
+        const out = createWriteStream(tempDest)
         res.on('data', (chunk: Buffer) => {
           received += chunk.length
           if (total > 0) onProgress(Math.floor((received / total) * 100))
         })
         res.pipe(out)
-        out.on('finish', resolve)
-        out.on('error', reject)
-        res.on('error', reject)
+        out.on('finish', () => {
+          if (total > 0 && received !== total) {
+            return fail(new Error(`Download incomplete: got ${received} of ${total} bytes`))
+          }
+          try {
+            renameSync(tempDest, dest)
+          } catch (err) {
+            return fail(err as Error)
+          }
+          resolve()
+        })
+        out.on('error', fail)
+        res.on('error', fail)
       })
-      .on('error', reject)
-      .on('timeout', () => reject(new Error('Download timed out')))
+      .on('error', fail)
+      .on('timeout', () => fail(new Error('Download timed out')))
   })
 }
 
@@ -215,9 +282,18 @@ export async function checkAndUpdateClientJar(
 
     onLog(`[BejaClient] Local: ${localVer ?? 'none'}  |  Remote: ${remote.version}`)
 
+    const localBootstrapValid = localVer
+      ? hasValidZipEnd(join(dlDir, `beja-bootstrap-${localVer}.jar`))
+      : false
+    const localAdapterJar = resolveAdapterJar()
+    const localAdapterValid = localAdapterJar ? hasValidZipEnd(localAdapterJar) : false
+
     if (localVer && !semverGt(remote.version, localVer)) {
-      onLog('[BejaClient] Client JAR is up to date.')
-      return
+      if (localBootstrapValid && localAdapterValid) {
+        onLog('[BejaClient] Client JAR is up to date.')
+        return
+      }
+      onLog('[BejaClient] Local client JAR appears corrupted — re-downloading current version.')
     }
 
     if (!existsSync(dlDir)) mkdirSync(dlDir, { recursive: true })
@@ -238,6 +314,11 @@ export async function checkAndUpdateClientJar(
     await downloadFile(remote.url, dest, pct => {
       onStatus(`Downloading BejaClient ${remote.version}… ${pct}%`)
     })
+
+    if (!hasValidZipEnd(dest)) {
+      try { unlinkSync(dest) } catch { /* ignore */ }
+      throw new Error('Downloaded bootstrap JAR is not a valid zip (truncated download?)')
+    }
 
     if (remote.sha256) {
       onLog('[BejaClient] Verifying bootstrap checksum…')
@@ -261,6 +342,11 @@ export async function checkAndUpdateClientJar(
       await downloadFile(remote.adapterUrl, adapterDest, pct => {
         onStatus(`Downloading adapter ${remote.version}… ${pct}%`)
       })
+
+      if (!hasValidZipEnd(adapterDest)) {
+        try { unlinkSync(adapterDest) } catch { /* ignore */ }
+        throw new Error('Downloaded adapter JAR is not a valid zip (truncated download?)')
+      }
 
       if (remote.adapterSha256) {
         onLog('[BejaClient] Verifying adapter checksum…')

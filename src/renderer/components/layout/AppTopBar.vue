@@ -10,6 +10,10 @@
         </div>
         <span class="brand-version">BejaClient version {{ version }}</span>
       </div>
+      <div v-if="onlineCount !== null" class="brand-online" :title="`${onlineCount} player${onlineCount === 1 ? '' : 's'} online`">
+        <span class="online-dot" />
+        {{ onlineCount }} online
+      </div>
     </div>
 
     <!-- Drag region -->
@@ -135,7 +139,8 @@ const maximized    = ref(false)
 const dropdownOpen = ref(false)
 const pillRef      = ref<HTMLElement | null>(null)
 const dropdownRef  = ref<HTMLElement | null>(null)
-const version      = '1.1.12'
+const version      = ref('')
+const onlineCount  = ref<number | null>(null)
 
 const account       = computed(() => accountStore.selectedAccount)
 const instanceLabel = computed(() => launcherStore.activeProfile?.name ?? 'No instance')
@@ -183,6 +188,10 @@ onMounted(async () => {
   maximized.value = await window.api.window.isMaximized()
   window.api.window.onMaximized((v: boolean) => { maximized.value = v })
   document.addEventListener('mousedown', onClickOutside, true)
+  version.value = await window.api.system.getVersion()
+
+  try { onlineCount.value = await window.api.stats.online() } catch { /* non-fatal */ }
+  window.api.stats.onOnlineCount(c => { onlineCount.value = c })
 })
 
 onUnmounted(() => {
@@ -261,6 +270,28 @@ onUnmounted(() => {
   font-size: 10px;
   color: $text-muted;
   line-height: 1;
+}
+
+.brand-online {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: $text-muted;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+
+.online-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #30d158;
+  box-shadow: 0 0 5px rgba(48, 209, 88, 0.7);
+  flex-shrink: 0;
 }
 
 // ── Drag spacer ───────────────────────────────────────────────────────────────
@@ -348,9 +379,9 @@ onUnmounted(() => {
 .acc-dropdown {
   position: fixed;
   min-width: 200px;
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius-lg;
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.61);
+  border-radius: 0;
   overflow: hidden;
   z-index: 2000;
   box-shadow: $shadow-xl;
@@ -380,7 +411,7 @@ onUnmounted(() => {
   text-align: left;
   transition: background 100ms, color 100ms;
 
-  &:hover:not(:disabled) { background: $surface-elevated; color: $text-primary; }
+  &:hover:not(:disabled) { background: #1a1a1a; color: $text-primary; }
   &.active { color: $text-primary; font-weight: 600; }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
@@ -397,7 +428,7 @@ onUnmounted(() => {
 
 .dd-sep {
   height: 1px;
-  background: $border;
+  background: rgba(255, 255, 255, 0.12);
   margin: 4px 0;
 }
 

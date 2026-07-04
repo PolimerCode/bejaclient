@@ -24,30 +24,37 @@ export function setupLaunchHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow 
   ipcMain.handle('launch:start', async (event, profileId: string) => {
     sendConsoleClear()
     openConsoleWindow()
-    await launchGame(
-      profileId,
-      line => {
-        event.sender.send('launch:log', line)
-        sendConsoleLog(line)
-      },
-      status => {
-        event.sender.send('launch:status', status)
-        sendConsoleStatus(status)
-        if (status === 'running') {
-          const profile = getProfile(profileId)
-          setPlayingPresence(profile?.version)
-          if (getSettings().launcher.closeOnLaunch) {
-            mainWindow?.hide()
-            showTray()
+    try {
+      await launchGame(
+        profileId,
+        line => {
+          event.sender.send('launch:log', line)
+          sendConsoleLog(line)
+        },
+        status => {
+          event.sender.send('launch:status', status)
+          sendConsoleStatus(status)
+          if (status === 'running') {
+            const profile = getProfile(profileId)
+            setPlayingPresence(profile?.version)
+            if (getSettings().launcher.closeOnLaunch) {
+              mainWindow?.hide()
+              showTray()
+            }
           }
-        }
-        if (status.startsWith('stopped')) {
-          setIdlePresence()
-          hideTray()
-          if (getSettings().launcher.keepLauncherOpen) mainWindow?.show()
-        }
-      },
-    )
+          if (status.startsWith('stopped')) {
+            setIdlePresence()
+            hideTray()
+            if (getSettings().launcher.keepLauncherOpen) mainWindow?.show()
+          }
+        },
+      )
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      event.sender.send('launch:log', `[Launcher] Error: ${message}`)
+      sendConsoleLog(`[Launcher] Error: ${message}`)
+      throw e
+    }
   })
 
   ipcMain.handle('launch:kill', () => {

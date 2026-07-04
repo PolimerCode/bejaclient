@@ -58,6 +58,7 @@ export default {
     chat: {
       noMessages: 'Noch keine Nachrichten',
       messagePlaceholder: 'Nachricht an {name}...',
+      typing: 'schreibt...',
     },
     toast: {
       sent: 'Anfrage an {name} gesendet',

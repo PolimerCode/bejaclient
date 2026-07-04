@@ -188,6 +188,8 @@ onMounted(() => {
     }
   })
   window.api.console.onClear(() => { lines.value = []; userScrolled = false })
+  // Signal main that IPC listeners are registered and buffered logs can be flushed.
+  window.api.console.ready()
 })
 </script>
 

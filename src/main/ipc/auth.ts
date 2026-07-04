@@ -10,6 +10,7 @@ import {
 
 export function setupAuthHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow | null): void {
   ipcMain.handle('auth:login', async () => {
+    mainWindow?.webContents.send('auth:browser-opened')
     return await loginWithMicrosoft(mainWindow)
   })
 

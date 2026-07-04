@@ -73,8 +73,9 @@ const statusClass = computed(() => {
   return 'idle'
 })
 
-watch(() => store.isRunning, (v) => { if (v) expanded.value = true })
-watch(() => store.status, (v) => { if (v === 'error') expanded.value = true })
+watch(() => store.isRunning,   (v) => { if (v) expanded.value = true })
+watch(() => store.isLaunching, (v) => { if (v) expanded.value = true })
+watch(() => store.status,      (v) => { if (v === 'error') expanded.value = true })
 
 watch(() => store.logs.length, () => {
   if (!expanded.value) return

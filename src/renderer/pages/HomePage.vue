@@ -14,12 +14,12 @@
 
           <!-- Left flanking member -->
           <div class="flank-slot flank-slot--left">
-            <LobbySkinSlot :member="lobbySlots[1]" size="2xl" :initial-rotation-y="0.524" @invite="openInvite" />
+            <LobbySkinSlot :member="lobbySlots[0]" size="2xl" :initial-rotation-y="0.524" @invite="openInvite" />
           </div>
 
           <!-- Center: local player — preserves original HeroSkinViewer positioning/animation -->
           <div class="skin-wrap">
-            <div v-if="lobbySlots[0]?.isLeader" class="slot-crown">
+            <div v-if="lobbyStore.isLeader" class="slot-crown">
               <svg width="22" height="17" viewBox="0 0 22 17" fill="none">
                 <path d="M1 15L4.5 5.5L11 10L17.5 2L21 9.5V15H1Z" fill="#FFD700" stroke="#E8A800" stroke-width="1"/>
               </svg>
@@ -33,15 +33,15 @@
               :initial-rotation-y="0.524"
               :auto-rotate-speed="0"
             />
-            <div v-if="lobbySlots[0]" class="skin-namebar">
+            <div v-if="account" class="skin-namebar">
               <span class="skin-you-tag">You</span>
-              <span class="skin-username">{{ lobbySlots[0].username }}</span>
+              <span class="skin-username">{{ account.username }}</span>
             </div>
           </div>
 
           <!-- Right flanking member -->
           <div class="flank-slot flank-slot--right">
-            <LobbySkinSlot :member="lobbySlots[2]" size="2xl" :initial-rotation-y="-0.524" @invite="openInvite" />
+            <LobbySkinSlot :member="lobbySlots[1]" size="2xl" :initial-rotation-y="-0.524" @invite="openInvite" />
           </div>
 
           <!-- Voice controls (shown when party has ≥2 members or voice is active) -->
@@ -74,7 +74,30 @@
             </button>
             <div v-if="lobbyStore.party" class="party-id">
               {{ lobbyStore.party.id }}
+              <button
+                class="party-id-refresh"
+                title="Generate a new code"
+                :disabled="lobbyStore.isCreating"
+                @click="lobbyStore.regenerateParty()"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+              </button>
             </div>
+            <button
+              v-else
+              class="voice-btn create-lobby-btn"
+              title="Create a lobby and get a code"
+              :disabled="lobbyStore.isCreating"
+              @click="lobbyStore.createParty()"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Create Lobby
+            </button>
             <button class="voice-btn join-party-btn" title="Join a party by code" @click="openJoin">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
@@ -163,8 +186,14 @@ const lobbySlots = computed(() => lobbyStore.slots)
 const inviteOpen    = ref(false)
 const inviteInitTab = ref<'invite' | 'join'>('invite')
 
-function openInvite() { inviteInitTab.value = 'invite'; inviteOpen.value = true }
-function openJoin()   { inviteInitTab.value = 'join';   inviteOpen.value = true }
+async function openInvite() {
+  // Clicking an empty slot to invite someone creates the lobby on demand,
+  // rather than one existing silently for every user from page load.
+  if (!lobbyStore.party) await lobbyStore.createParty()
+  inviteInitTab.value = 'invite'
+  inviteOpen.value = true
+}
+function openJoin() { inviteInitTab.value = 'join'; inviteOpen.value = true }
 
 // ── Voice: wire IPC events → composable ──────────────────────────────────────
 
@@ -190,9 +219,6 @@ onMounted(async () => {
   try {
     sceneVideo.value = await (window as any).api.video.getScene()
   } catch {}
-
-  // Create party for local player (no-op if already in one)
-  await lobbyStore.createParty()
 
   // Init voice capture
   await voice.init()
@@ -291,7 +317,10 @@ function onVideoError(e: Event) {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 280px;
+  // width scales with vh (like height below) so the aspect ratio stays constant
+  // across window sizes — a fixed px width against a vh-based height stretched
+  // the viewer taller/narrower on bigger screens, clipping arms/shoulders.
+  width: 36.8vh;
   height: calc(100% + 14vh);
   pointer-events: none;
   animation: skinFloat 3s ease-in-out infinite alternate;
@@ -371,33 +400,66 @@ function onVideoError(e: Event) {
 .voice-btn {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.55);
+  border-radius: 0;
+  border: 1px solid rgba(137, 137, 137, 0.5);
+  background: #0d0d0d;
   color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 150ms, color 150ms, border-color 150ms;
-  backdrop-filter: blur(6px);
+  transition: background 80ms, color 80ms, border-color 80ms;
 
   &.active { color: rgba(255, 255, 255, 0.9); }
-  &.muted  { color: #ff453a; border-color: rgba(255, 69, 58, 0.45); background: rgba(255, 69, 58, 0.12); }
-  &:hover  { background: rgba(255, 255, 255, 0.1); }
+  &.muted  { color: #ff453a; border-color: rgba(255, 69, 58, 0.6); background: rgba(255, 69, 58, 0.12); }
+  &:hover  { background: #1a1a1a; border-color: rgba(255, 255, 255, 0.61); }
 }
 
 .party-id {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.16em;
-  color: rgba(255, 255, 255, 0.35);
-  background: rgba(0, 0, 0, 0.45);
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(6px);
+  color: rgba(255, 255, 255, 0.5);
+  background: #0d0d0d;
+  padding: 4px 6px 4px 8px;
+  border-radius: 0;
+  border: 1px solid rgba(137, 137, 137, 0.5);
   user-select: all;
+}
+
+.create-lobby-btn {
+  width: auto;
+  height: 34px;
+  border-radius: 0;
+  padding: 0 14px;
+  gap: 6px;
+  font-family: 'Mojangles', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+
+.party-id-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  border-radius: 0;
+  user-select: none;
+  transition: color 150ms, background 150ms;
+
+  &:hover:not(:disabled) { color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.08); }
+  &:disabled { opacity: 0.4; cursor: default; }
 }
 
 // ── Ready button (non-leader) ─────────────────────────────────────────────────

@@ -19,11 +19,18 @@ export interface Party {
   leaderId: string
 }
 
+export interface PartyInvite {
+  partyId: string
+  fromUuid: string
+  fromUsername: string
+}
+
 export const useLobbyStore = defineStore('lobby', () => {
   const accountStore = useAccountStore()
 
-  const party        = ref<Party | null>(null)
-  const isCreating   = ref(false)
+  const party         = ref<Party | null>(null)
+  const isCreating    = ref(false)
+  const pendingInvite = ref<PartyInvite | null>(null)
 
   let _pendingJoin: ((r: { ok: boolean; error?: string }) => void) | null = null
   let _pendingJoinTimer: ReturnType<typeof setTimeout> | null = null
@@ -49,10 +56,18 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   const canLaunch = computed(() => isLeader.value && allReady.value)
 
-  // Always 5 visible slots; nulls = empty invite slots
+  // Other party members — excludes the local player, who is always rendered
+  // separately in the center "You" slot regardless of their position in the
+  // raw members array (that array is ordered by join time, not by "who's local").
+  const otherMembers = computed<PartyMember[]>(() => {
+    if (!party.value) return []
+    return party.value.members.filter(m => m.uuid !== localUuid.value)
+  })
+
+  // Two flanking slots for other members; null = empty invite slot
   const slots = computed<(PartyMember | null)[]>(() => {
-    const MAX = 5
-    const filled: (PartyMember | null)[] = [...(party.value?.members ?? [])]
+    const MAX = 2
+    const filled: (PartyMember | null)[] = [...otherMembers.value]
     while (filled.length < MAX) filled.push(null)
     return filled
   })
@@ -93,6 +108,14 @@ export const useLobbyStore = defineStore('lobby', () => {
       },
     }).catch(() => {})
     isCreating.value = false
+  }
+
+  // Leaves the current party (if any) and creates a brand new one with a fresh code —
+  // for a manual "regenerate code" action, unlike createParty()'s no-op-if-already-in-one guard.
+  async function regenerateParty(): Promise<void> {
+    if (isCreating.value) return
+    if (party.value) await leaveParty()
+    await createParty()
   }
 
   async function leaveParty(): Promise<void> {
@@ -218,11 +241,27 @@ export const useLobbyStore = defineStore('lobby', () => {
     }
   }
 
+  function handleInviteReceived(data: PartyInvite): void {
+    pendingInvite.value = data
+  }
+
+  async function acceptInvite(): Promise<{ ok: boolean; error?: string }> {
+    if (!pendingInvite.value) return { ok: false, error: 'No pending invite' }
+    const code = pendingInvite.value.partyId
+    pendingInvite.value = null
+    return joinParty(code)
+  }
+
+  function declineInvite(): void {
+    pendingInvite.value = null
+  }
+
   return {
-    party, isCreating,
+    party, isCreating, pendingInvite,
     localUuid, localMember, isLeader, isReady, allReady, canLaunch, slots, memberCount,
-    createParty, leaveParty, joinParty, inviteFriend, toggleReady, launchParty,
+    createParty, regenerateParty, leaveParty, joinParty, inviteFriend, toggleReady, launchParty,
     handleMemberJoined, handleMemberLeft, handleReadyUpdate,
     handleSkinUpdate, handleDisbanded, handleSpeaking, handlePartyState, handlePartyError,
+    handleInviteReceived, acceptInvite, declineInvite,
   }
 })
