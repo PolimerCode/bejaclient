@@ -531,14 +531,14 @@ function switchTab(key: string) {
 
 // ── Install tracking ──────────────────────────────────────────────────────────
 
-const profileModsMap = ref<Map<string, string[]>>(new Map())
+const profileModsMap = ref<Record<string, string[]>>({})
 
 async function refreshProfileMods(profileId: string) {
   try {
     const actualMods = await window.api.mods.list(profileId)
-    profileModsMap.value.set(profileId, actualMods.map(m => m.fileName.toLowerCase()))
+    profileModsMap.value[profileId] = actualMods.map(m => m.fileName.toLowerCase())
   } catch {
-    profileModsMap.value.set(profileId, [])
+    profileModsMap.value[profileId] = []
   }
 }
 
@@ -547,7 +547,7 @@ function isInstalledInProfile(hit: ExploreHit, profileId: string): boolean {
   const profileIds = installedMap.value.get(key)
   if (!profileIds || !profileIds.has(profileId)) return false
 
-  const actualFiles = profileModsMap.value.get(profileId)
+  const actualFiles = profileModsMap.value[profileId]
   if (!actualFiles || actualFiles.length === 0) return false
 
   const slug = hit.slug.toLowerCase()
@@ -559,14 +559,9 @@ function isInstalledInProfile(hit: ExploreHit, profileId: string): boolean {
 }
 
 function isInstalled(hit: ExploreHit): boolean {
-  const key = hitKey(hit)
-  const profileIds = installedMap.value.get(key)
-  if (!profileIds || profileIds.size === 0) return false
-
-  for (const pid of profileIds) {
-    if (isInstalledInProfile(hit, pid)) return true
-  }
-  return false
+  const activeId = activeProfileId.value
+  if (!activeId) return false
+  return isInstalledInProfile(hit, activeId)
 }
 
 async function loadInstalls() {
@@ -832,7 +827,8 @@ function formatNum(n: number): string {
 const listEl = ref<HTMLElement | null>(null)
 
 onMounted(async () => {
-  await Promise.all([loadProfiles(), loadVersions(), loadCategories(), loadInstalls()])
+  await loadProfiles()
+  await Promise.all([loadVersions(), loadCategories(), loadInstalls()])
   window.api.modrinth.onProgress(msg => showProgress(msg))
   window.api.servers.onPingResult(data => applyPingResult(data as Parameters<typeof applyPingResult>[0]))
   doSearch()

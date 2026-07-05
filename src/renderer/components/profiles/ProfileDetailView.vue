@@ -282,8 +282,9 @@ async function importMod(): Promise<void> {
   mods.value = await window.api.mods.install(props.profile.id)
 }
 
-function browseMods(): void {
+async function browseMods(): Promise<void> {
   menuOpen.value = false
+  await store.setActiveProfile(props.profile.id)
   router.push('/mods')
 }
 
