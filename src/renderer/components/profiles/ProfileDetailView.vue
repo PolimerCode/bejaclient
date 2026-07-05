@@ -66,13 +66,46 @@
       </button>
     </div>
 
+    <!-- Controls Row: Search + Browse content + Upload files ── -->
+    <div class="controls-row">
+      <div class="search-bar">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          v-model="searchQuery"
+          class="search-input"
+          :placeholder="`Search ${mods.length} projects...`"
+        />
+      </div>
+
+      <div class="action-buttons">
+        <button class="browse-content-btn" @click="browseMods">
+          <svg class="btn-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+          </svg>
+          BROWSE CONTENT
+        </button>
+        <button class="upload-files-btn" @click="importMod">
+          <svg class="btn-svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          UPLOAD FILES
+        </button>
+      </div>
+    </div>
+
     <!-- Mods area ───────────────────────────────────────────── -->
     <div class="mods-area">
       <div v-if="modsLoading" class="mods-spinner">
         <div class="spinner" />
       </div>
 
-      <template v-else-if="enabledMods.length === 0">
+      <template v-else-if="mods.length === 0">
         <div class="empty-state">
           <img :src="iconNotFound" class="empty-icon" />
           <p class="empty-text">No content installed yet...</p>
@@ -90,9 +123,12 @@
       </template>
 
       <template v-else>
-        <div class="mods-list">
+        <div v-if="filteredMods.length === 0" class="no-results-state">
+          <p class="empty-text">No mods match your search...</p>
+        </div>
+        <div v-else class="mods-list">
           <div
-            v-for="mod in enabledMods"
+            v-for="mod in filteredMods"
             :key="mod.id"
             class="mod-row"
           >
@@ -103,14 +139,28 @@
 
             <div class="mod-info">
               <div class="mod-name-row">
-                <span class="mod-name">{{ mod.name }}</span>
+                <span class="mod-name" :class="{ 'mod-name--disabled': !mod.enabled }">{{ mod.name }}</span>
                 <span class="mod-stat">{{ formatSize(mod.fileSize) }}</span>
               </div>
               <p class="mod-desc">{{ mod.fileName }}</p>
             </div>
 
-            <div class="install-area">
-              <button class="install-btn" title="Remove" @click="deleteMod(mod.id)">Remove</button>
+            <div class="mod-actions-cell">
+              <!-- Switch Toggle -->
+              <div
+                class="toggle"
+                :class="{ 'toggle--on': mod.enabled }"
+                title="Enable/Disable mod"
+                @click.stop="toggleMod(mod.id)"
+              />
+              
+              <!-- Trash icon button -->
+              <button class="delete-icon-btn" title="Remove" @click.stop="deleteMod(mod.id)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -121,6 +171,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLauncherStore } from '../../store/launcherStore'
 import type { LaunchProfile, ModInfo } from '../../types'
 
@@ -141,6 +192,7 @@ const emit  = defineEmits<{
 }>()
 
 const store = useLauncherStore()
+const router = useRouter()
 
 const localImageUrl  = ref<string | null>(props.profile.imageUrl ?? null)
 const imageInputRef  = ref<HTMLInputElement | null>(null)
@@ -180,7 +232,14 @@ const modsLoading = ref(false)
 const menuOpen   = ref(false)
 const dotsWrapRef = ref<HTMLElement | null>(null)
 
-const enabledMods = computed(() => mods.value.filter(m => m.enabled))
+const searchQuery = ref('')
+
+const filteredMods = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim()
+  return mods.value.filter(mod => {
+    return !q || mod.name.toLowerCase().includes(q) || mod.fileName.toLowerCase().includes(q)
+  })
+})
 
 const playtimeLabel = computed(() => {
   const ms = props.profile.playtimeMs ?? 0
@@ -224,6 +283,7 @@ async function importMod(): Promise<void> {
 
 function browseMods(): void {
   menuOpen.value = false
+  router.push('/mods')
 }
 
 async function exportPack(): Promise<void> {
@@ -489,7 +549,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   flex-shrink: 0;
 }
 
-// ── Content tabs ──────────────────────────────────────────────────────────────
+// ── Content tabs ──────────────────────────────────────────────
 .content-tabs {
   display: flex;
   gap: 8px;
@@ -534,94 +594,110 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   filter: brightness(0) invert(0.85);
 }
 
+// ── Controls Row ──────────────────────────────────────────────
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #111;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  height: 36px;
+  padding: 0 12px;
+  flex: 1;
+  max-width: 480px;
+  gap: 8px;
+  transition: border-color $transition;
+
+  &:focus-within {
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+}
+
+.search-icon {
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: 'Mojangles', monospace;
+  font-size: 10px;
+  color: #fff;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+  }
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.browse-content-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1c2127;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  color: #46d66d;
+  font-family: 'Mojangles', monospace;
+  font-size: 10px;
+  padding: 0 14px;
+  height: 36px;
+  cursor: pointer;
+  transition: background $transition, border-color $transition, color $transition;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(70, 214, 109, 0.4);
+  }
+}
+
+.upload-files-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1c2127;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  color: #ccc;
+  font-family: 'Mojangles', monospace;
+  font-size: 10px;
+  padding: 0 14px;
+  height: 36px;
+  cursor: pointer;
+  transition: background $transition, border-color $transition;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+}
+
+.btn-svg {
+  flex-shrink: 0;
+}
+
 // ── Mods area ─────────────────────────────────────────────────────────────────
 .mods-area {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-}
-
-// ── Empty state ───────────────────────────────────────────────────────────────
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 48px 24px;
-  height: 100%;
-}
-
-.empty-icon {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-  opacity: 0.55;
-  filter: grayscale(1);
-}
-
-.empty-text {
-  font-style: italic;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-.empty-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.import-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  background: rgba(102, 102, 102, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  border-radius: 20px;
-  color: #d6d6d6;
-  font-family: 'Mojangles', monospace;
-  font-size: 10px;
-  cursor: pointer;
-  transition: background $transition, border-color $transition;
-
-  &:hover {
-    background: rgba(102, 102, 102, 0.45);
-    border-color: rgba(255, 255, 255, 0.32);
-  }
-}
-
-.browse-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  border-radius: 20px;
-  color: #46d66d;
-  font-family: 'Mojangles', monospace;
-  font-size: 10px;
-  cursor: pointer;
-  transition: background $transition, border-color $transition;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.8);
-    border-color: rgba(70, 214, 109, 0.4);
-  }
-}
-
-.btn-icon {
-  width: 14px;
-  height: 14px;
-  object-fit: contain;
-  filter: brightness(0) invert(0.85);
-
-  &--modrinth {
-    filter: none;
-  }
 }
 
 // ── Mods list — same style as explore tab ─────────────────────────────────────
@@ -690,6 +766,12 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.mod-name--disabled {
+  opacity: 0.5;
+  color: #8f8f8f;
 }
 
 .mod-stat {
@@ -712,24 +794,73 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   text-overflow: ellipsis;
 }
 
-.install-area {
+// ── Mod Actions & Toggle ──────────────────────────────────────
+.mod-actions-cell {
   display: flex;
   align-items: center;
+  gap: 12px;
   flex-shrink: 0;
 }
 
-.install-btn {
-  padding: 10px 22px;
-  font-family: 'Mojangles', monospace;
-  font-size: 11px;
-  color: #ccc;
-  background: #111;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+.delete-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
-  letter-spacing: 0.06em;
-  transition: background 80ms, border-color 80ms, color 80ms;
+  transition: background 0.15s, color 0.15s;
 
-  &:hover { background: #1e1e1e; border-color: rgba(255, 255, 255, 0.55); color: #fff; }
+  &:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+  }
+}
+
+.toggle {
+  width: 36px;
+  height: 20px;
+  background: #1e2124;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+  flex-shrink: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #555;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: transform 150ms cubic-bezier(0.2,0,0,1), background 150ms;
+  }
+
+  &--on {
+    background: color-mix(in srgb, #1bd96a 18%, #111);
+    border-color: color-mix(in srgb, #1bd96a 60%, transparent);
+
+    &::after {
+      background: #1bd96a;
+      transform: translateX(16px);
+    }
+  }
+}
+
+.no-results-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  height: 100%;
 }
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
