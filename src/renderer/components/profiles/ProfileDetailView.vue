@@ -706,6 +706,89 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
   min-height: 0;
 }
 
+// ── Empty state ───────────────────────────────────────────────────────────────
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  height: 100%;
+}
+
+.empty-icon {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+
+.empty-text {
+  font-style: italic;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.empty-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.import-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: rgba(102, 102, 102, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  color: #d6d6d6;
+  font-family: 'Mojangles', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background $transition, border-color $transition;
+
+  &:hover {
+    background: rgba(102, 102, 102, 0.45);
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+}
+
+.browse-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  color: #46d66d;
+  font-family: 'Mojangles', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background $transition, border-color $transition;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(70, 214, 109, 0.4);
+  }
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  filter: brightness(0) invert(0.85);
+
+  &--modrinth {
+    filter: none;
+  }
+}
+
 // ── Mods list — same style as explore tab ─────────────────────────────────────
 .mods-list {
   display: flex;
