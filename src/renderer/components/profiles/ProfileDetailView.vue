@@ -171,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLauncherStore } from '../../store/launcherStore'
 import type { LaunchProfile, ModInfo } from '../../types'
@@ -313,6 +313,9 @@ onMounted(() => {
   document.addEventListener('mousedown', onClickOutside)
 })
 onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
+onActivated(() => {
+  loadMods()
+})
 </script>
 
 <style lang="scss" scoped>
