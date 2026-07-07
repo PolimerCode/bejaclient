@@ -115,9 +115,10 @@ export async function installVersion(
   loaderVersion: string | undefined,
   onProgress: (task: string, progress: number, total: number) => void,
   javaPath = 'java',
+  customGameDir?: string,
 ): Promise<void> {
   const settings = getSettings()
-  const gameDir = settings.game.defaultGameDir
+  const gameDir = customGameDir || settings.game.defaultGameDir
   const concurrency = settings.launcher.concurrentDownloads
 
   onProgress(`Installing Minecraft ${versionId}...`, 0, 100)

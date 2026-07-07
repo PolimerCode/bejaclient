@@ -246,7 +246,7 @@ export async function launchGame(
     await installVersion(profile.version, profile.loader, loaderVer, (task, progress, total) => {
       const pct = total > 0 ? Math.round((progress / total) * 100) : 0
       onLog(`[Download] ${task} (${pct}%)`)
-    }, javaPath)
+    }, javaPath, gameDir)
     onLog('[Launcher] Download complete.')
   }
 
