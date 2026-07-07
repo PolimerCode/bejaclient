@@ -121,7 +121,39 @@
       <div class="news-section">
         <h2 class="news-heading">{{ $t('home.news') }}</h2>
         <div class="news-grid">
-          <div v-for="n in 6" :key="n" class="news-card" />
+          <template v-if="newsList.length">
+            <div
+              v-for="item in newsList.slice(0, 6)"
+              :key="item.id"
+              class="news-card"
+              @click="openNewsLink(item.readMoreLink)"
+            >
+              <div class="news-card-inner">
+                <img
+                  v-if="item.playPageImage?.url"
+                  :src="item.playPageImage.url"
+                  class="news-card-img"
+                  loading="lazy"
+                />
+                <div class="news-card-scrim"></div>
+                <div class="news-card-content">
+                  <div class="news-card-meta">
+                    <span class="news-card-tag">{{ item.tag || 'Update' }}</span>
+                    <span class="news-card-date">{{ formatDate(item.date) }}</span>
+                  </div>
+                  <h3 class="news-card-title">{{ item.title }}</h3>
+                  <p class="news-card-text">{{ truncateText(item.text, 65) }}</p>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div v-else-if="isLoadingNews" class="news-loading-placeholder">
+            <div class="spinner"></div>
+            <span>Loading news...</span>
+          </div>
+          <div v-else class="news-empty">
+            <span>No news available</span>
+          </div>
         </div>
       </div>
 
@@ -153,6 +185,7 @@ import { useFriendsStore }  from '../store/friendsStore'
 import { useAccountStore }  from '../store/accountStore'
 import { useLockerStore }   from '../store/lockerStore'
 import { useLobbyStore }    from '../store/lobbyStore'
+import { useLauncherStore } from '../store/launcherStore'
 import { useLobbyVoice }    from '../composables/useLobbyVoice'
 import LobbySkinSlot  from '../components/lobby/LobbySkinSlot.vue'
 import InviteOverlay  from '../components/lobby/InviteOverlay.vue'
@@ -169,6 +202,7 @@ const videoRef   = ref<HTMLVideoElement | null>(null)
 const friendsStore = useFriendsStore()
 const accountStore = useAccountStore()
 const lobbyStore   = useLobbyStore()
+const launcherStore = useLauncherStore()
 const voice        = useLobbyVoice()
 
 const lockerStore = useLockerStore()
@@ -177,6 +211,32 @@ const account     = computed(() => accountStore.selectedAccount)
 const activeSkinUrl   = computed(() => lockerStore.skinUrl  ?? account.value?.skinUrl  ?? null)
 const activeCapeUrl   = computed(() => lockerStore.capeUrl  ?? account.value?.capeUrl  ?? null)
 const activeSkinModel = computed(() => lockerStore.model    ?? account.value?.skinModel ?? 'default')
+
+const newsList      = computed(() => launcherStore.news)
+const isLoadingNews = ref(false)
+
+function openNewsLink(url: string) {
+  if (url) {
+    window.api.system.openExternal(url)
+  }
+}
+
+function formatDate(dateStr: string) {
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function truncateText(text: string, maxLen: number) {
+  if (!text) return ''
+  return text.length > maxLen ? text.slice(0, maxLen) + '...' : text
+}
 
 const friends    = computed(() => friendsStore.friends)
 const lobbySlots = computed(() => lobbyStore.slots)
@@ -223,6 +283,16 @@ onMounted(async () => {
   // Init voice capture
   await voice.init()
   initVoiceIpc()
+
+  // Fetch news
+  isLoadingNews.value = true
+  try {
+    await launcherStore.fetchNews()
+  } catch (err) {
+    console.error('Failed to fetch news:', err)
+  } finally {
+    isLoadingNews.value = false
+  }
 })
 
 onActivated(() => { videoRef.value?.play() })
@@ -527,6 +597,9 @@ function onVideoError(e: Event) {
   border-radius: 8px;
   border: 1px solid transparent;
   transition: --news-angle 400ms cubic-bezier(0.2, 0, 0, 1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
 
   &:hover {
     --news-angle: 135deg;
@@ -545,6 +618,121 @@ function onVideoError(e: Event) {
     );
   background-origin: border-box;
   background-clip: padding-box, border-box;
+}
+
+.news-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.news-card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  transition: transform 0.3s ease;
+}
+
+.news-card:hover .news-card-img {
+  transform: scale(1.05);
+}
+
+.news-card-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(17, 19, 22, 0.95) 0%,
+    rgba(17, 19, 22, 0.7) 40%,
+    rgba(17, 19, 22, 0.2) 100%
+  );
+  z-index: 2;
+}
+
+.news-card-content {
+  position: relative;
+  z-index: 3;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+}
+
+.news-card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.news-card-tag {
+  color: $accent;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(85, 178, 255, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.news-card-date {
+  color: $text-muted;
+}
+
+.news-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: $text-primary;
+  margin: 0;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-card-text {
+  font-size: 11px;
+  color: $text-secondary;
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// ── Placeholders ──────────────────────────────────────────────────────────────
+.news-loading-placeholder,
+.news-empty {
+  grid-column: span 3;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: $text-muted;
+  font-size: 12px;
+  background: $surface;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.news-loading-placeholder .spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: $accent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 // ── Friends panel ─────────────────────────────────────────────────────────────
