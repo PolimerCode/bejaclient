@@ -377,7 +377,7 @@ const sections = computed(() => [
   { key: 'game',       label: t('settings.sections.game'),       icon: IconGame       },
   { key: 'launcher',   label: t('settings.sections.launcher'),   icon: IconLauncher   },
   { key: 'appearance', label: t('settings.sections.appearance'), icon: IconAppearance },
-  { key: 'accounts',   label: 'Accounts',                        icon: IconAccounts   },
+  { key: 'accounts',   label: t('settings.sections.accounts'),   icon: IconAccounts   },
 ])
 
 const activeSection = ref('game')

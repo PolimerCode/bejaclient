@@ -23,6 +23,7 @@ export default {
     retry: 'Повторить',
     profile: 'Профиль',
     noProfiles: 'Нет сборок',
+    launch: 'ИГРАТЬ',
   },
 
   console: {
@@ -145,7 +146,7 @@ export default {
   },
 
   settings: {
-    sections: { game: 'Игра', launcher: 'Лаунчер', appearance: 'Внешний вид' },
+    sections: { game: 'Игра', launcher: 'Лаунчер', appearance: 'Внешний вид', accounts: 'Аккаунты' },
     browse: 'ОБЗОР',
     game: {
       dir: 'Папка игры',
@@ -233,5 +234,29 @@ export default {
     lines: 'Строки ошибки',
     dismiss: 'Закрыть',
     settings: 'Настройки сборки',
+  },
+
+  lobby: {
+    invite: 'Пригласить',
+    create: 'Создать лобби',
+    createTitle: 'Создать лобби и получить код',
+    joinTitle: 'Присоединиться к группе по коду',
+    refreshTitle: 'Сгенерировать новый код',
+    ready: 'Готов',
+    notReady: 'Не готов',
+  },
+
+  accounts: {
+    heading: 'Аккаунты',
+    desc: 'Управление вашими аккаунтами Microsoft / Minecraft.',
+    expired: 'Токен устарел — нажмите Обновить',
+    active: 'Активен',
+    select: 'Выбрать',
+    refresh: 'Обновить',
+    remove: 'Удалить',
+    empty: 'Нет аккаунтов. Добавьте один для начала.',
+    add: 'Добавить аккаунт Microsoft',
+    import: 'Импортировать из лаунчера Minecraft',
+    hint: 'Откроется окно входа Microsoft, либо вы можете импортировать существующие аккаунты из официального лаунчера Minecraft',
   },
 }

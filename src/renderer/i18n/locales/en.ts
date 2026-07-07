@@ -23,6 +23,7 @@ export default {
     retry: 'Retry',
     profile: 'Profile',
     noProfiles: 'No profiles',
+    launch: 'LAUNCH',
   },
 
   console: {
@@ -145,7 +146,7 @@ export default {
   },
 
   settings: {
-    sections: { game: 'Game', launcher: 'Launcher', appearance: 'Appearance' },
+    sections: { game: 'Game', launcher: 'Launcher', appearance: 'Appearance', accounts: 'Accounts' },
     browse: 'BROWSE',
     game: {
       dir: 'Game Directory',
@@ -233,5 +234,29 @@ export default {
     lines: 'Error Lines',
     dismiss: 'Dismiss',
     settings: 'Profile Settings',
+  },
+
+  lobby: {
+    invite: 'Invite',
+    create: 'Create Lobby',
+    createTitle: 'Create a lobby and get a code',
+    joinTitle: 'Join a party by code',
+    refreshTitle: 'Generate a new code',
+    ready: 'Ready',
+    notReady: 'Not Ready',
+  },
+
+  accounts: {
+    heading: 'Accounts',
+    desc: 'Manage your Microsoft / Minecraft accounts.',
+    expired: 'Token expired — click Refresh',
+    active: 'Active',
+    select: 'Select',
+    refresh: 'Refresh',
+    remove: 'Remove',
+    empty: 'No accounts. Add one to get started.',
+    add: 'Add Microsoft Account',
+    import: 'Import from Minecraft Launcher',
+    hint: 'A Microsoft login window will open — or import existing accounts from the official Minecraft Launcher',
   },
 }

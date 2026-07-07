@@ -16,7 +16,7 @@
             <line x1="4"  y1="13" x2="22" y2="13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
           </svg>
         </div>
-        <span class="slot-invite-label">Invite</span>
+        <span class="slot-invite-label">{{ $t('lobby.invite') }}</span>
       </button>
     </template>
 
@@ -64,7 +64,7 @@
             <svg v-if="member.isReady" width="10" height="10" viewBox="0 0 10 10" fill="none">
               <path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            {{ member.isReady ? 'Ready' : 'Not Ready' }}
+            {{ member.isReady ? $t('lobby.ready') : $t('lobby.notReady') }}
           </div>
         </div>
 

@@ -17,7 +17,7 @@
           <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
           <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
         </svg>
-        <span class="launch-label launch-label--title">LAUNCH</span>
+        <span class="launch-label launch-label--title">{{ $t('launch.launch') }}</span>
         <span v-if="activeProfile" class="launch-version">{{ versionLabel }}</span>
       </template>
 

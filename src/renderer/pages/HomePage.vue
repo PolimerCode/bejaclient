@@ -76,7 +76,7 @@
               {{ lobbyStore.party.id }}
               <button
                 class="party-id-refresh"
-                title="Generate a new code"
+                :title="$t('lobby.refreshTitle')"
                 :disabled="lobbyStore.isCreating"
                 @click="lobbyStore.regenerateParty()"
               >
@@ -89,16 +89,16 @@
             <button
               v-else
               class="voice-btn create-lobby-btn"
-              title="Create a lobby and get a code"
+              :title="$t('lobby.createTitle')"
               :disabled="lobbyStore.isCreating"
               @click="lobbyStore.createParty()"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              Create Lobby
+              {{ $t('lobby.create') }}
             </button>
-            <button class="voice-btn join-party-btn" title="Join a party by code" @click="openJoin">
+            <button class="voice-btn join-party-btn" :title="$t('lobby.joinTitle')" @click="openJoin">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
               </svg>
@@ -113,7 +113,7 @@
             <svg v-if="lobbyStore.isReady" width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2 7l3.5 3.5 6.5-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            {{ lobbyStore.isReady ? 'Ready' : 'Not Ready' }}
+            {{ lobbyStore.isReady ? $t('lobby.ready') : $t('lobby.notReady') }}
           </button>
         </div>
       </div>

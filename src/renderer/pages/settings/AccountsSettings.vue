@@ -1,7 +1,7 @@
 <template>
   <div class="settings-section">
-    <h2 class="section-heading">Accounts</h2>
-    <p class="section-desc">Manage your Microsoft / Minecraft accounts.</p>
+    <h2 class="section-heading">{{ $t('accounts.heading') }}</h2>
+    <p class="section-desc">{{ $t('accounts.desc') }}</p>
 
     <div class="accounts-list">
       <div
@@ -17,20 +17,20 @@
           <span class="account-name">{{ account.username }}</span>
           <span class="account-uuid">{{ formatUuid(account.uuid) }}</span>
           <span class="account-status" :class="{ expired: isExpired(account) }">
-            {{ isExpired(account) ? 'Token expired — click Refresh' : 'Active' }}
+            {{ isExpired(account) ? $t('accounts.expired') : $t('accounts.active') }}
           </span>
         </div>
         <div class="account-actions">
-          <button v-if="!account.selected" class="action-btn select-btn" @click="selectAccount(account.id)">Select</button>
-          <span v-else class="selected-badge">Active</span>
+          <button v-if="!account.selected" class="action-btn select-btn" @click="selectAccount(account.id)">{{ $t('accounts.select') }}</button>
+          <span v-else class="selected-badge">{{ $t('accounts.active') }}</span>
           <button class="action-btn refresh-btn" @click="refreshAccount(account.id)">
             <span v-if="refreshing === account.id" class="mini-spinner" />
-            <span v-else>Refresh</span>
+            <span v-else>{{ $t('accounts.refresh') }}</span>
           </button>
-          <button class="action-btn remove-btn" @click="removeAccount(account.id)">Remove</button>
+          <button class="action-btn remove-btn" @click="removeAccount(account.id)">{{ $t('accounts.remove') }}</button>
         </div>
       </div>
-      <div v-if="accounts.length === 0" class="no-accounts">No accounts. Add one to get started.</div>
+      <div v-if="accounts.length === 0" class="no-accounts">{{ $t('accounts.empty') }}</div>
     </div>
 
     <div class="add-account">
@@ -38,12 +38,12 @@
         <template #icon>
           <svg width="12" height="12" viewBox="0 0 12 12"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </template>
-        Add Microsoft Account
+        {{ $t('accounts.add') }}
       </Button>
       <Button variant="secondary" :loading="accountStore.loading" @click="importFromLauncher">
-        Import from Minecraft Launcher
+        {{ $t('accounts.import') }}
       </Button>
-      <span class="add-hint">A Microsoft login window will open — or import existing accounts from the official Minecraft Launcher</span>
+      <span class="add-hint">{{ $t('accounts.hint') }}</span>
     </div>
 
     <div v-if="accountStore.error" class="error-msg">
@@ -55,11 +55,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from '../../components/common/Button.vue'
 import SkinPreview from '../../components/skin/SkinPreview.vue'
 import { useAccountStore } from '../../store/accountStore'
 import type { Account } from '../../types'
 
+const { t } = useI18n()
 const accountStore = useAccountStore()
 const accounts = computed(() => accountStore.accounts)
 const refreshing = ref<string | null>(null)
