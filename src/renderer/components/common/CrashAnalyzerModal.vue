@@ -12,8 +12,8 @@
               </svg>
             </div>
             <div class="crash-header-text">
-              <h2 class="crash-title">Game Crashed</h2>
-              <p class="crash-subtitle">BejaClient analyzed your crash log</p>
+              <h2 class="crash-title">{{ $t('crash.title') }}</h2>
+              <p class="crash-subtitle">{{ $t('crash.subtitle') }}</p>
             </div>
             <button class="crash-close" @click="store.crashInfo = null">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -24,22 +24,22 @@
 
           <div class="crash-body">
             <div class="crash-card cause-card">
-              <span class="card-label">Likely Cause</span>
+              <span class="card-label">{{ $t('crash.cause') }}</span>
               <p class="card-text">{{ store.crashInfo.cause }}</p>
             </div>
             <div class="crash-card fix-card">
-              <span class="card-label">Suggested Fix</span>
+              <span class="card-label">{{ $t('crash.fix') }}</span>
               <p class="card-text">{{ store.crashInfo.fix }}</p>
             </div>
             <div v-if="store.crashInfo.lines.length" class="crash-log-wrap">
-              <span class="card-label">Error Lines</span>
+              <span class="card-label">{{ $t('crash.lines') }}</span>
               <pre class="crash-log">{{ store.crashInfo.lines.join('\n') }}</pre>
             </div>
           </div>
 
           <div class="crash-footer">
-            <button class="btn-secondary" @click="store.crashInfo = null">Dismiss</button>
-            <button class="btn-primary" @click="openProfiles">Profile Settings</button>
+            <button class="btn-secondary" @click="store.crashInfo = null">{{ $t('crash.dismiss') }}</button>
+            <button class="btn-primary" @click="openProfiles">{{ $t('crash.settings') }}</button>
           </div>
 
         </div>
@@ -50,10 +50,12 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useLauncherStore } from '../../store/launcherStore'
 
 const store  = useLauncherStore()
 const router = useRouter()
+const { t } = useI18n()
 
 function openProfiles() {
   store.crashInfo = null

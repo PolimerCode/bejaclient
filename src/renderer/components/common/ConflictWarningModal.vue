@@ -12,8 +12,8 @@
               </svg>
             </div>
             <div>
-              <h2 class="conflict-title">Mod Conflicts Detected</h2>
-              <p class="conflict-subtitle">{{ store.conflictWarning.conflicts.length }} issue(s) found before launch</p>
+              <h2 class="conflict-title">{{ $t('conflict.title') }}</h2>
+              <p class="conflict-subtitle">{{ $t('conflict.subtitle', { count: store.conflictWarning.conflicts.length }) }}</p>
             </div>
           </div>
 
@@ -31,9 +31,9 @@
           </div>
 
           <div class="conflict-footer">
-            <button class="btn-cancel" @click="store.dismissConflict()">Fix First</button>
-            <button class="btn-autofix" @click="store.autoFixAndLaunch()">Auto Fix & Launch</button>
-            <button class="btn-force" @click="store.forceLaunch()">Launch Anyway</button>
+            <button class="btn-cancel" @click="store.dismissConflict()">{{ $t('conflict.fixFirst') }}</button>
+            <button class="btn-autofix" @click="store.autoFixAndLaunch()">{{ $t('conflict.autoFix') }}</button>
+            <button class="btn-force" @click="store.forceLaunch()">{{ $t('conflict.launchAnyway') }}</button>
           </div>
 
         </div>
@@ -43,8 +43,11 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useLauncherStore } from '../../store/launcherStore'
+
 const store = useLauncherStore()
+const { t } = useI18n()
 </script>
 
 <style lang="scss" scoped>

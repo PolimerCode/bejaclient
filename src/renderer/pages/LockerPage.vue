@@ -9,7 +9,7 @@
         class="tab-btn"
         :class="{ active: activeTab === t }"
         @click="activeTab = t"
-      >{{ t }}</button>
+      >{{ $t(`locker.tabs.${t.toLowerCase()}`) }}</button>
     </div>
 
     <!-- Search -->
@@ -38,23 +38,23 @@
           />
         </div>
         <div class="add-card-content">
-          <img :src="addIcon" class="add-icon-img" alt="" />
-          <span class="add-title">Add new skin</span>
-          <span class="add-sub">Import or search by username</span>
-        </div>
-      </button>
+           <img :src="addIcon" class="add-icon-img" alt="" />
+           <span class="add-title">{{ $t('locker.skins.addTitle') }}</span>
+           <span class="add-sub">{{ $t('locker.skins.importOrSearch') }}</span>
+         </div>
+       </button>
 
-      <!-- Saved skin cards -->
-      <div
-        v-for="skin in filteredSkins"
-        :key="skin.uuid"
-        class="skin-card"
-        :class="{ 'skin-card--active': skin.uuid === selectedUuid }"
-        @click="equipSkin(skin)"
-      >
-        <button class="skin-del-btn" @click.stop="removeSkin(skin.uuid)" title="Remove">
-          <img :src="removeIcon" alt="" />
-        </button>
+       <!-- Saved skin cards -->
+       <div
+         v-for="skin in filteredSkins"
+         :key="skin.uuid"
+         class="skin-card"
+         :class="{ 'skin-card--active': skin.uuid === selectedUuid }"
+         @click="equipSkin(skin)"
+       >
+         <button class="skin-del-btn" @click.stop="removeSkin(skin.uuid)" :title="$t('locker.skins.remove')">
+           <img :src="removeIcon" alt="" />
+         </button>
 
         <!-- 3D viewer for all cards with a skin URL -->
         <template v-if="resolvedSkinUrl(skin)">
@@ -92,52 +92,52 @@
       <!-- No cape card -->
       <div
         class="skin-card"
-        :class="{ 'skin-card--active': selectedCapeUuid === null }"
-        @click="equipNoCape"
-      >
-        <div class="no-cape-wrap">
-          <span class="no-cape-label">None</span>
-        </div>
-      </div>
+         :class="{ 'skin-card--active': selectedCapeUuid === null }"
+         @click="equipNoCape"
+       >
+         <div class="no-cape-wrap">
+           <span class="no-cape-label">{{ $t('locker.capes.none') }}</span>
+         </div>
+       </div>
 
-      <div v-if="capesLoading" class="empty-tab">
-        <span class="btn-spinner" style="width:18px;height:18px;border-width:2px" />
-      </div>
+       <div v-if="capesLoading" class="empty-tab">
+         <span class="btn-spinner" style="width:18px;height:18px;border-width:2px" />
+       </div>
 
-      <div
-        v-for="cape in filteredCapes"
-        :key="cape.id"
-        class="skin-card"
-        :class="{ 'skin-card--active': cape.id === selectedCapeUuid }"
-        @click="equipCape(cape)"
-      >
-        <span v-if="cape.builtin" class="cape-builtin-badge">BEJA</span>
-        <div class="cape-front-wrap">
-          <div class="cape-front" :style="capeFrontStyle(cape.url)" />
-        </div>
-        <div class="skin-label-row">
-          <span class="skin-username">{{ cape.alias }}</span>
-          <span class="skin-model-tag">cape</span>
-        </div>
-      </div>
+       <div
+         v-for="cape in filteredCapes"
+         :key="cape.id"
+         class="skin-card"
+         :class="{ 'skin-card--active': cape.id === selectedCapeUuid }"
+         @click="equipCape(cape)"
+       >
+         <span v-if="cape.builtin" class="cape-builtin-badge">BEJA</span>
+         <div class="cape-front-wrap">
+           <div class="cape-front" :style="capeFrontStyle(cape.url)" />
+         </div>
+         <div class="skin-label-row">
+           <span class="skin-username">{{ cape.alias }}</span>
+           <span class="skin-model-tag">cape</span>
+         </div>
+       </div>
 
-      <div v-if="!capesLoading && capesError" class="empty-tab" style="width:100%">
-        <span class="empty-tab-text" style="color:#c05050">{{ capesError }}</span>
-      </div>
-      <div v-else-if="!capesLoading && !filteredCapes.length" class="empty-tab" style="width:100%">
-        <span class="empty-tab-text">No capes on this account</span>
-      </div>
-    </div>
+       <div v-if="!capesLoading && capesError" class="empty-tab" style="width:100%">
+         <span class="empty-tab-text" style="color:#c05050">{{ capesError }}</span>
+       </div>
+       <div v-else-if="!capesLoading && !filteredCapes.length" class="empty-tab" style="width:100%">
+         <span class="empty-tab-text">{{ $t('locker.capes.noCapes') }}</span>
+       </div>
+     </div>
 
-    <!-- ── Cosmetics tab ──────────────────────────────────────────────── -->
-    <div v-else-if="activeTab === 'Cosmetics'" class="cosmetics-grid">
-      <div v-if="cosmeticsLoading" class="empty-tab">
-        <span class="btn-spinner" style="width:18px;height:18px;border-width:2px" />
-      </div>
+     <!-- ── Cosmetics tab ──────────────────────────────────────────────── -->
+     <div v-else-if="activeTab === 'Cosmetics'" class="cosmetics-grid">
+       <div v-if="cosmeticsLoading" class="empty-tab">
+         <span class="btn-spinner" style="width:18px;height:18px;border-width:2px" />
+       </div>
 
-      <div v-else-if="!ownedCosmetics.length" class="empty-tab" style="width:100%">
-        <span class="empty-tab-text">No cosmetics in your collection</span>
-      </div>
+       <div v-else-if="!ownedCosmetics.length" class="empty-tab" style="width:100%">
+         <span class="empty-tab-text">{{ $t('locker.cosmetics.noCosmetics') }}</span>
+       </div>
 
       <div
         v-for="cos in filteredCosmetics"
@@ -167,13 +167,13 @@
       <Transition name="modal">
         <div v-if="addModalOpen" class="modal-overlay" @click.self="closeModal">
           <div class="add-modal">
-            <p class="modal-title">Add new skin</p>
+            <p class="modal-title">{{ $t('locker.skins.addTitle') }}</p>
             <div class="modal-input-wrap" :class="{ focused: modalInputFocused }">
               <input
                 ref="modalInputRef"
                 v-model="usernameInput"
                 class="modal-input"
-                placeholder="Enter username..."
+                :placeholder="$t('locker.skins.placeholder')"
                 @focus="modalInputFocused = true"
                 @blur="modalInputFocused = false"
                 @keyup.enter="lookupSkin"
@@ -183,10 +183,10 @@
               <p v-if="lookupError" class="modal-error">{{ lookupError }}</p>
             </Transition>
             <div class="modal-footer">
-              <button class="modal-btn modal-btn--cancel" @click="closeModal">Cancel</button>
+              <button class="modal-btn modal-btn--cancel" @click="closeModal">{{ $t('locker.skins.cancel') }}</button>
               <button class="modal-btn modal-btn--confirm" :disabled="!usernameInput.trim() || lookingUp" @click="lookupSkin">
                 <span v-if="lookingUp" class="btn-spinner" />
-                <template v-else>Search</template>
+                <template v-else>{{ $t('locker.skins.search') }}</template>
               </button>
             </div>
           </div>
@@ -199,7 +199,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAccountStore } from '../store/accountStore'
+
+const { t } = useI18n()
 
 import addIcon    from '../assets/icons8-add-64.png'
 import removeIcon from '../assets/icons8-remove-24.png'
@@ -261,7 +264,9 @@ type Tab          = typeof tabs[number]
 const activeTab   = ref<Tab>('Skins')
 const search      = ref('')
 
-const searchPlaceholder = computed(() => `Search ${activeTab.value.toLowerCase()}...`)
+const searchPlaceholder = computed(() => {
+  return t('locker.searchPlaceholder', { tab: t(`locker.tabs.${activeTab.value.toLowerCase()}`).toLowerCase() })
+})
 
 interface SkinEntry {
   uuid: string
@@ -500,7 +505,7 @@ async function lookupSkin() {
   lookupError.value = ''
   try {
     const profile = await window.api.players.lookup(name)
-    if (!profile) { lookupError.value = `Player "${name}" not found`; return }
+    if (!profile) { lookupError.value = t('locker.skins.notFound', { name }); return }
     if (!skins.value.some(s => s.uuid === profile.uuid)) {
       skins.value.push({
         uuid:     profile.uuid,
@@ -513,7 +518,7 @@ async function lookupSkin() {
     }
     closeModal()
   } catch {
-    lookupError.value = 'Lookup failed. Try again.'
+    lookupError.value = t('locker.skins.lookupFailed')
   } finally {
     lookingUp.value = false
   }

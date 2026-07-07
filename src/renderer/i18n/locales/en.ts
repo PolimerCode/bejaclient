@@ -189,4 +189,49 @@ export default {
       languageDesc: 'UI display language',
     },
   },
+
+  locker: {
+    searchPlaceholder: 'Search {tab}...',
+    tabs: {
+      skins: 'Skins',
+      capes: 'Capes',
+      cosmetics: 'Cosmetics',
+    },
+    skins: {
+      addTitle: 'Add new skin',
+      addBtn: 'Add new skin',
+      importOrSearch: 'Import or search by username',
+      remove: 'Remove',
+      placeholder: 'Enter username...',
+      search: 'Search',
+      cancel: 'Cancel',
+      notFound: 'Player "{name}" not found',
+      lookupFailed: 'Lookup failed. Try again.',
+    },
+    capes: {
+      none: 'None',
+      noCapes: 'No capes on this account',
+    },
+    cosmetics: {
+      noCosmetics: 'No cosmetics in your collection',
+    },
+  },
+
+  conflict: {
+    title: 'Mod Conflicts Detected',
+    subtitle: '0 issues found before launch | {count} issue found before launch | {count} issues found before launch',
+    fixFirst: 'Fix First',
+    autoFix: 'Auto Fix & Launch',
+    launchAnyway: 'Launch Anyway',
+  },
+
+  crash: {
+    title: 'Game Crashed',
+    subtitle: 'BejaClient analyzed your crash log',
+    cause: 'Likely Cause',
+    fix: 'Suggested Fix',
+    lines: 'Error Lines',
+    dismiss: 'Dismiss',
+    settings: 'Profile Settings',
+  },
 }
